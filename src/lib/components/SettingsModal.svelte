@@ -44,10 +44,18 @@
             <div class="space-y-2">
                 <h3 class="text-sm font-bold text-o3-teal uppercase tracking-wider">OPML Import/Export</h3>
                 <div class="flex gap-2">
-                    <button class="btn btn-sm variant-filled-surface flex-1 border border-o3-black-30 hover:bg-o3-black-70 text-o3-paper" on:click={() => document.getElementById('opmlInput')?.click()}>
+                    <button 
+                        class="flex-1 o3-button o3-button--secondary o3-button--small o3-button-icon o3-button-icon--upload" 
+                        data-o3-theme="inverse"
+                        on:click={() => document.getElementById('opmlInput')?.click()}
+                    >
                         Import OPML
                     </button>
-                    <button class="btn btn-sm variant-filled-surface flex-1 border border-o3-black-30 hover:bg-o3-black-70 text-o3-paper" on:click={exportOPML}>
+                    <button 
+                        class="flex-1 o3-button o3-button--secondary o3-button--small o3-button-icon o3-button-icon--download" 
+                        data-o3-theme="inverse"
+                        on:click={exportOPML}
+                    >
                         Export OPML
                     </button>
                 </div>
@@ -58,10 +66,18 @@
             <div class="space-y-2">
                 <h3 class="text-sm font-bold text-o3-teal uppercase tracking-wider">Full Backup</h3>
                 <div class="flex gap-2">
-                    <button class="btn btn-sm variant-filled-surface flex-1 border border-o3-black-30 hover:bg-o3-black-70 text-o3-paper" on:click={() => document.getElementById('backupInput')?.click()}>
+                    <button 
+                        class="flex-1 o3-button o3-button--secondary o3-button--small o3-button-icon o3-button-icon--restore" 
+                        data-o3-theme="inverse"
+                        on:click={() => document.getElementById('backupInput')?.click()}
+                    >
                         Restore Backup
                     </button>
-                    <button class="btn btn-sm variant-filled-surface flex-1 border border-o3-black-30 hover:bg-o3-black-70 text-o3-paper" on:click={exportBackup}>
+                    <button 
+                        class="flex-1 o3-button o3-button--secondary o3-button--small o3-button-icon o3-button-icon--download" 
+                        data-o3-theme="inverse"
+                        on:click={exportBackup}
+                    >
                         Backup Data
                     </button>
                 </div>
@@ -71,7 +87,8 @@
 
         <div class="mt-8 text-center">
             <button 
-                class="text-sm text-o3-black-40 hover:text-o3-teal transition"
+                class="o3-button o3-button--ghost o3-button--small"
+                data-o3-theme="inverse"
                 on:click={close}
             >
                 Close
