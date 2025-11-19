@@ -1,7 +1,8 @@
 <script lang="ts">
 	import '../app.postcss';
 	import HelpModal from '$lib/components/HelpModal.svelte';
-	import { showHelp } from '$lib/stores';
+	import SettingsModal from '$lib/components/SettingsModal.svelte';
+	import { showHelp, showSettings } from '$lib/stores';
 
 	function handleGlobalKeydown(e: KeyboardEvent) {
 		// Toggle help on '?' or Shift+'/'
@@ -20,6 +21,10 @@
 
 {#if $showHelp}
 	<HelpModal />
+{/if}
+
+{#if $showSettings}
+	<SettingsModal />
 {/if}
 
 <slot />

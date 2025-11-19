@@ -231,7 +231,7 @@
 
 <div class="h-full flex flex-col bg-o3-black-90">
     <!-- Toolbar -->
-    <div class="h-14 border-b border-o3-black-30 flex items-center px-4 justify-between sticky top-0 bg-o3-black-90 z-10 gap-4">
+    <div class="h-14 border-b border-o3-black-30 flex items-center px-4 justify-between sticky top-0 bg-o3-black-90 z-10 gap-4 group">
         <div class="flex items-center gap-2 min-w-0 flex-1">
             <span class="text-xs font-bold uppercase tracking-wider text-o3-black-50 truncate">
                 {#if $selectedFeedId === 'all'}All Articles
@@ -243,7 +243,7 @@
             </span>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-shrink-0">
             {#if selectionMode && selectedIds.size > 0}
                 <button 
                     class="btn btn-sm variant-filled-primary rounded-none text-[10px] font-bold uppercase tracking-wider bg-o3-teal text-o3-black-90 hover:bg-o3-white"

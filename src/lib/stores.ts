@@ -15,6 +15,9 @@ export const refreshProgress = writable<{ completed: number; total: number } | n
 // Help Modal
 export const showHelp = writable<boolean>(false);
 
+// Settings Modal
+export const showSettings = writable<boolean>(false);
+
 // Settings Store (Synced with LocalStorage for immediate UI prefs, DB for deeper config)
 export const userSettings = localStorageStore('vesper-settings', {
     theme: 'vesper',

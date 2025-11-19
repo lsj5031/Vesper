@@ -2,9 +2,7 @@
     import { onDestroy } from 'svelte';
     import { liveQuery } from 'dexie';
     import { db, type Feed } from '../db';
-    import { selectedFeedId, selectedArticleId, searchQuery, refreshProgress, userSettings } from '../stores';
-    import { importOPML, exportOPML } from '../opml';
-    import { importBackup, exportBackup } from '../backup';
+    import { selectedFeedId, selectedArticleId, searchQuery, refreshProgress, userSettings, showSettings } from '../stores';
     import { addNewFeed, refreshAllFeeds, syncFeed } from '../rss';
     
     // Live Queries
@@ -30,20 +28,6 @@
         }
     }
     
-    function handleFileSelect(e: Event) {
-        const input = e.target as HTMLInputElement;
-        if (input.files?.length) {
-            importOPML(input.files[0]).then(() => alert('Imported!'));
-        }
-    }
-
-    function handleBackupSelect(e: Event) {
-        const input = e.target as HTMLInputElement;
-        if (input.files?.length) {
-            importBackup(input.files[0]).then(() => alert('Restored!'));
-        }
-    }
-
     function selectFeed(id: number | undefined) {
         if (id !== undefined) $selectedFeedId = id;
     }
@@ -160,17 +144,8 @@
             />
             <button class="btn btn-sm variant-filled-primary rounded-none font-bold text-xs" on:click={handleAddFeed}>+</button>
         </div>
-        <div class="flex justify-between text-[10px] text-o3-black-50 uppercase tracking-wider font-bold">
-            <button class="hover:text-o3-white" on:click={() => document.getElementById('opmlInput')?.click()}>Import OPML</button>
-            <button class="hover:text-o3-white" on:click={exportOPML}>Export OPML</button>
-            <input type="file" id="opmlInput" class="hidden" on:change={handleFileSelect} accept=".opml,.xml" />
-        </div>
-        <div class="flex justify-between text-[10px] text-o3-black-50 uppercase tracking-wider font-bold mt-1">
-            <button class="hover:text-o3-white" on:click={() => document.getElementById('backupInput')?.click()}>Restore Backup</button>
-            <button class="hover:text-o3-white" on:click={exportBackup}>Backup Data</button>
-            <input type="file" id="backupInput" class="hidden" on:change={handleBackupSelect} accept=".json" />
-        </div>
-        <div class="flex gap-1">
+        
+        <div class="flex gap-1 mt-2">
             {#if $refreshProgress}
                 <div class="flex-1 flex flex-col gap-1">
                     <button 
@@ -192,8 +167,16 @@
             <button 
                 class="px-2 text-[10px] py-1 {isManaging ? 'bg-o3-teal text-o3-black-90' : 'bg-o3-black-80 text-o3-paper hover:bg-o3-black-70'}" 
                 on:click={() => isManaging = !isManaging}
+                title="Manage Feeds"
             >
                 {isManaging ? 'Done' : 'Manage'}
+            </button>
+            <button 
+                class="px-2 text-[10px] py-1 bg-o3-black-80 text-o3-paper hover:bg-o3-black-70" 
+                on:click={() => $showSettings = true}
+                title="Settings"
+            >
+                ⚙
             </button>
         </div>
     </div>
