@@ -66,3 +66,25 @@ export async function getSetting(key: string, defaultValue: any = null) {
 export async function setSetting(key: string, value: any) {
     await db.settings.put({ key, value });
 }
+
+// Batch mark articles as read
+export async function markArticlesAsRead(ids: number[]) {
+    if (ids.length === 0) return;
+    await db.articles.where('id').anyOf(ids).modify({ read: 1 });
+}
+
+// Batch mark articles as unread
+export async function markArticlesAsUnread(ids: number[]) {
+    if (ids.length === 0) return;
+    await db.articles.where('id').anyOf(ids).modify({ read: 0 });
+}
+
+// Mark all articles in a feed as read
+export async function markFeedAsRead(feedId: number) {
+    await db.articles.where('feedId').equals(feedId).modify({ read: 1 });
+}
+
+// Mark all articles as read
+export async function markAllArticlesAsRead() {
+    await db.articles.toCollection().modify({ read: 1 });
+}
