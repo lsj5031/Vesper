@@ -1,8 +1,7 @@
 import Parser from 'rss-parser';
 import DOMPurify from 'dompurify';
 import { db, type Feed, type Article } from './db';
-import { get } from 'svelte/store';
-import { userSettings } from './stores';
+
 
 // Initialize Parser
 const parser = new Parser({

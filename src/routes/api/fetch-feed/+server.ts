@@ -1,4 +1,4 @@
-import { json, error as httpError } from '@sveltejs/kit';
+import { error as httpError } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
