@@ -142,7 +142,14 @@
                 class="input bg-o3-black-80 border-none text-sm h-8 rounded-none placeholder-o3-black-50 focus:ring-1 focus:ring-o3-teal w-full"
                 on:keydown={(e) => e.key === 'Enter' && handleAddFeed()}
             />
-            <button class="btn btn-sm variant-filled-primary rounded-none font-bold text-xs" on:click={handleAddFeed}>+</button>
+            <button 
+                class="o3-button o3-button--primary o3-button--small o3-button-icon o3-button-icon--plus o3-button-icon--icon-only"
+                data-o3-theme="inverse"
+                on:click={handleAddFeed}
+                title="Add Feed"
+            >
+                <span class="o3-button-icon__label">Add</span>
+            </button>
         </div>
         
         <div class="flex gap-1 mt-2">
@@ -158,25 +165,28 @@
                 </div>
             {:else}
                 <button 
-                    class="flex-1 text-[10px] bg-o3-black-80 hover:bg-o3-black-70 py-1 text-o3-paper" 
+                    class="flex-1 o3-button o3-button--secondary o3-button--small o3-button-icon o3-button-icon--refresh"
+                    data-o3-theme="inverse" 
                     on:click={handleRefreshAll}
                 >
                     Refresh All
                 </button>
             {/if}
             <button 
-                class="px-2 text-[10px] py-1 {isManaging ? 'bg-o3-teal text-o3-black-90' : 'bg-o3-black-80 text-o3-paper hover:bg-o3-black-70'}" 
+                class="o3-button o3-button--secondary o3-button--small {isManaging ? 'o3-button--primary' : ''}" 
+                data-o3-theme="inverse"
                 on:click={() => isManaging = !isManaging}
                 title="Manage Feeds"
             >
                 {isManaging ? 'Done' : 'Manage'}
             </button>
             <button 
-                class="px-2 text-[10px] py-1 bg-o3-black-80 text-o3-paper hover:bg-o3-black-70" 
+                class="o3-button o3-button--secondary o3-button--small o3-button-icon o3-button-icon--settings o3-button-icon--icon-only"
+                data-o3-theme="inverse"
                 on:click={() => $showSettings = true}
                 title="Settings"
             >
-                ⚙
+                <span class="o3-button-icon__label">Settings</span>
             </button>
         </div>
     </div>
@@ -227,18 +237,22 @@
                             
                             {#if isManaging}
                                 <button 
-                                    class="text-o3-black-50 hover:text-o3-claret px-1"
+                                    class="o3-button o3-button--ghost o3-button--small o3-button-icon o3-button-icon--cross o3-button-icon--icon-only"
+                                    data-o3-theme="inverse"
                                     on:click={(e) => handleDeleteFeed(feed, e)}
+                                    title="Delete Feed"
                                 >
-                                    ×
+                                    <span class="o3-button-icon__label">Delete</span>
                                 </button>
                             {:else}
                                 <button 
-                                    class={getRefreshButtonClass(feed.id)}
+                                    class="o3-button o3-button--ghost o3-button--small o3-button-icon o3-button-icon--refresh o3-button-icon--icon-only {feed.id && refreshingFeeds.has(feed.id) ? 'animate-spin' : ''}"
+                                    data-o3-theme="inverse"
                                     on:click={(e) => handleRefreshFeed(feed, e)}
                                     disabled={feed.id ? refreshingFeeds.has(feed.id) : false}
+                                    title="Refresh Feed"
                                 >
-                                    ↻
+                                    <span class="o3-button-icon__label">Refresh</span>
                                 </button>
                             {/if}
                         </div>
@@ -272,18 +286,22 @@
                         
                         {#if isManaging}
                             <button 
-                                class="text-o3-black-50 hover:text-o3-claret px-1"
+                                class="o3-button o3-button--ghost o3-button--small o3-button-icon o3-button-icon--cross o3-button-icon--icon-only"
+                                data-o3-theme="inverse"
                                 on:click={(e) => handleDeleteFeed(feed, e)}
+                                title="Delete Feed"
                             >
-                                ×
+                                <span class="o3-button-icon__label">Delete</span>
                             </button>
                         {:else}
                             <button 
-                                class={getRefreshButtonClass(feed.id)}
+                                class="o3-button o3-button--ghost o3-button--small o3-button-icon o3-button-icon--refresh o3-button-icon--icon-only {feed.id && refreshingFeeds.has(feed.id) ? 'animate-spin' : ''}"
+                                data-o3-theme="inverse"
                                 on:click={(e) => handleRefreshFeed(feed, e)}
                                 disabled={feed.id ? refreshingFeeds.has(feed.id) : false}
+                                title="Refresh Feed"
                             >
-                                ↻
+                                <span class="o3-button-icon__label">Refresh</span>
                             </button>
                         {/if}
                     </div>

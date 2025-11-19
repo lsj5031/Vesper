@@ -246,21 +246,24 @@
         <div class="flex items-center gap-2 flex-shrink-0">
             {#if selectionMode && selectedIds.size > 0}
                 <button 
-                    class="btn btn-sm variant-filled-primary rounded-none text-[10px] font-bold uppercase tracking-wider bg-o3-teal text-o3-black-90 hover:bg-o3-white"
+                    class="o3-button o3-button--primary o3-button--small o3-button-icon o3-button-icon--tick"
+                    data-o3-theme="inverse"
                     on:click={markSelectedRead}
                     title="Mark selected as read"
                 >
-                    ✓ Read
+                    Read
                 </button>
                 <button 
-                    class="btn btn-sm variant-filled-primary rounded-none text-[10px] font-bold uppercase tracking-wider bg-o3-teal text-o3-black-90 hover:bg-o3-white"
+                    class="o3-button o3-button--secondary o3-button--small"
+                    data-o3-theme="inverse"
                     on:click={markSelectedUnread}
                     title="Mark selected as unread"
                 >
-                    ✗ Unread
+                    Unread
                 </button>
                 <button 
-                    class="btn btn-sm variant-filled-surface rounded-none text-[10px] font-bold uppercase tracking-wider text-o3-teal border border-o3-teal hover:bg-o3-black-80"
+                    class="o3-button o3-button--ghost o3-button--small o3-button-icon o3-button-icon--cross"
+                    data-o3-theme="inverse"
                     on:click={() => selectedIds.clear()}
                     title="Clear selection"
                 >
@@ -277,38 +280,42 @@
             </select>
             
             <button 
-                class="btn btn-sm rounded-none text-[10px] font-bold uppercase tracking-wider {selectionMode ? 'bg-o3-teal text-o3-black-90 hover:bg-o3-white' : 'variant-filled-surface text-o3-teal border border-o3-teal hover:bg-o3-black-80'}"
+                class="o3-button o3-button--small {selectionMode ? 'o3-button--primary o3-button-icon o3-button-icon--tick' : 'o3-button--secondary o3-button-icon o3-button-icon--edit'}"
+                data-o3-theme="inverse"
                 on:click={() => {
                     selectionMode = !selectionMode;
                     if (!selectionMode) selectedIds.clear();
                 }}
                 title={selectionMode ? 'Exit selection mode' : 'Enter selection mode'}
             >
-                {selectionMode ? '✓ Select' : '◻ Select'}
+                {selectionMode ? 'Done' : 'Select'}
             </button>
             
             {#if !selectionMode}
                 <button 
-                    class="btn btn-sm variant-filled-surface rounded-none text-[10px] font-bold uppercase tracking-wider hover:bg-o3-black-80"
+                    class="o3-button o3-button--secondary o3-button--small o3-button-icon o3-button-icon--tick"
+                    data-o3-theme="inverse"
                     on:click={markAllRead}
                     title="Mark all visible as read"
                 >
-                    ✓ All
+                    All
                 </button>
                 <button 
-                    class="btn btn-sm variant-filled-surface rounded-none text-[10px] font-bold uppercase tracking-wider hover:bg-o3-black-80"
+                    class="o3-button o3-button--secondary o3-button--small"
+                    data-o3-theme="inverse"
                     on:click={markAllUnread}
                     title="Mark all visible as unread"
                 >
-                    ✗ All
+                    All Unread
                 </button>
                 {#if typeof $selectedFeedId === 'number'}
                     <button 
-                        class="btn btn-sm variant-filled-surface rounded-none text-[10px] font-bold uppercase tracking-wider hover:bg-o3-black-80"
+                        class="o3-button o3-button--secondary o3-button--small o3-button-icon o3-button-icon--tick"
+                        data-o3-theme="inverse"
                         on:click={markFeedRead}
                         title="Mark entire feed as read"
                     >
-                        ✓ Feed
+                        Feed
                     </button>
                 {/if}
             {/if}
@@ -377,12 +384,13 @@
                         href={article.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="absolute bottom-2 right-2 z-20 p-2 text-o3-black-50 hover:text-o3-teal hover:bg-o3-black-70 rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                        class="absolute bottom-2 right-2 z-20 o3-button o3-button--ghost o3-button--small o3-button-icon o3-button-icon--outside-page o3-button-icon--icon-only opacity-0 group-hover:opacity-100 transition-all"
+                        data-o3-theme="inverse"
                         on:click|stopPropagation
                         title="Open in New Tab"
                         aria-label="Open in New Tab"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                        <span class="o3-button-icon__label">Open</span>
                     </a>
                 </div>
             {/each}
