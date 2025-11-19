@@ -25,6 +25,17 @@
 
     let scrollContainer: HTMLElement;
 
+    $: if ($selectedArticleId && scrollContainer) {
+        scrollContainer.scrollTop = 0;
+        scrollContainer.focus();
+    }
+
+    function handleKeydown(event: KeyboardEvent) {
+        if ((event.key === 's' || event.key === 'S') && $articleStore) {
+            toggleStar($articleStore);
+        }
+    }
+
     function scrollToTop() {
         scrollContainer?.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -32,8 +43,12 @@
 
 <div 
     bind:this={scrollContainer}
-    class="h-full overflow-y-auto bg-o3-black-90 min-h-0 relative"
+    class="h-full overflow-y-auto bg-o3-black-90 min-h-0 relative outline-none"
     style="scrollbar-color: #333 #1a1a1a;"
+    tabindex="0"
+    on:keydown={handleKeydown}
+    role="region"
+    aria-label="Article Content"
 >
     {#if $articleStore}
         <article class="max-w-3xl mx-auto px-8 py-12">

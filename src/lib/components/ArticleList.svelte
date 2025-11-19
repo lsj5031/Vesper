@@ -331,7 +331,7 @@
             {#each $articlesStore as article (article.id)}
                 <div 
                     id={'article-list-item-' + article.id}
-                    class="w-full flex items-stretch border-b border-o3-black-30 hover:bg-o3-black-80 group transition-colors {$selectedArticleId === article.id ? 'bg-o3-black-80' : ''} {isArticleSelected(article.id) ? 'bg-o3-teal bg-opacity-20' : ''}"
+                    class="relative w-full flex items-stretch border-b border-o3-black-30 hover:bg-o3-black-80 group transition-colors {$selectedArticleId === article.id ? 'bg-o3-black-80' : ''} {isArticleSelected(article.id) ? 'bg-o3-teal bg-opacity-20' : ''}"
                 >
                     {#if selectionMode}
                         <button 
@@ -372,6 +372,18 @@
                             {formatDate(article.isoDate)}
                         </div>
                     </button>
+
+                    <a
+                        href={article.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="absolute bottom-2 right-2 z-20 p-2 text-o3-black-50 hover:text-o3-teal hover:bg-o3-black-70 rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                        on:click|stopPropagation
+                        title="Open in New Tab"
+                        aria-label="Open in New Tab"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    </a>
                 </div>
             {/each}
             
