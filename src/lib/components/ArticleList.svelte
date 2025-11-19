@@ -49,8 +49,8 @@
         </span>
     </div>
 
-    <!-- List -->
-    <div class="flex-1 overflow-y-auto">
+    <!-- List - flex-1 with min-h-0 enables overflow scrolling -->
+    <div class="flex-1 overflow-y-auto min-h-0">
         {#if $articlesStore}
             {#each $articlesStore as article (article.id)}
                 <button 

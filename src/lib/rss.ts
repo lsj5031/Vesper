@@ -21,14 +21,11 @@ if (typeof window !== 'undefined') {
 }
 
 export async function fetchFeed(url: string) {
-    const settings = get(userSettings);
-    const proxy = settings.proxyUrl;
-    
-    // Construct URL
-    const targetUrl = proxy ? `${proxy}${encodeURIComponent(url)}` : url;
+    // Use backend proxy endpoint to avoid CORS issues
+    const proxyUrl = `/api/fetch-feed?url=${encodeURIComponent(url)}`;
     
     try {
-        const response = await fetch(targetUrl);
+        const response = await fetch(proxyUrl);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
         const text = await response.text();

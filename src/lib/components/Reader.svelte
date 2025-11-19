@@ -4,22 +4,27 @@
     import { selectedArticleId } from '../stores';
     import { format } from 'date-fns';
 
-    // Query the single article
+    // READ-ONLY query - just fetch the article
     $: articleStore = liveQuery(async () => {
         if (!$selectedArticleId) return null;
-        const a = await db.articles.get($selectedArticleId);
-        if (a && a.read === 0) {
-            db.articles.update(a.id!, { read: 1 });
-        }
-        return a;
+        return await db.articles.get($selectedArticleId);
     });
+    
+    // SEPARATE side effect for marking as read
+    // This runs outside liveQuery context, so it's safe to write
+    $: {
+        if ($selectedArticleId && $articleStore && $articleStore.read === 0) {
+            db.articles.update($selectedArticleId, { read: 1 })
+                .catch(err => console.error('Failed to mark as read:', err));
+        }
+    }
     
     async function toggleStar(article: any) {
         await db.articles.update(article.id!, { starred: article.starred ? 0 : 1 });
     }
 </script>
 
-<div class="h-full overflow-y-auto bg-vesper-dark">
+<div class="h-full overflow-y-auto bg-vesper-dark min-h-0">
     {#if $articleStore}
         <article class="max-w-3xl mx-auto px-8 py-12">
             <!-- Header -->
