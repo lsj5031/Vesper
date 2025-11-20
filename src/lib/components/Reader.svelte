@@ -30,8 +30,31 @@
     }
 
     function handleKeydown(event: KeyboardEvent) {
+        // Don't trigger when typing in input fields
+        if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+            return;
+        }
+
+        // Open original link (o key)
+        if ((event.key === 'o' || event.key === 'O') && $articleStore) {
+            window.open($articleStore.link, '_blank');
+            event.preventDefault();
+            return;
+        }
+
+        // Toggle star (s key)
         if ((event.key === 's' || event.key === 'S') && $articleStore) {
             toggleStar($articleStore);
+            event.preventDefault();
+            return;
+        }
+
+        // Scroll down page (space key)
+        if (event.code === 'Space' && $articleStore) {
+            event.preventDefault();
+            const pageHeight = scrollContainer.clientHeight;
+            scrollContainer.scrollBy({ top: pageHeight, behavior: 'smooth' });
+            return;
         }
     }
 

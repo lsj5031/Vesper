@@ -566,7 +566,6 @@
                         target="_blank"
                         rel="noopener noreferrer"
                         class="absolute bottom-2 right-2 z-20 o3-button o3-button--ghost o3-button--small o3-button-icon o3-button-icon--outside-page o3-button-icon--icon-only opacity-0 group-hover:opacity-100 transition-all"
-                        data-o3-theme="inverse"
                         on:click|stopPropagation
                         title="Open in New Tab"
                         aria-label="Open in New Tab"
