@@ -1,8 +1,13 @@
-<script>
+<script lang="ts">
     import Sidebar from '$lib/components/Sidebar.svelte';
     import ArticleList from '$lib/components/ArticleList.svelte';
     import Reader from '$lib/components/Reader.svelte';
     import { themeMode } from '$lib/stores';
+
+    export let data;
+    export let params;
+    export let form;
+    const _kitProps = { data, params, form };
 </script>
 
 <div id="vesper-layout" class="grid h-screen w-screen overflow-hidden" style={`background:${$themeMode === 'dark' ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-paper)'}`}>

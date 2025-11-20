@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onDestroy } from 'svelte';
-    import { liveQuery } from 'dexie';
+    import Dexie, { liveQuery } from 'dexie';
     import { db, type Feed } from '../db';
     import { selectedFeedId, selectedArticleId, searchQuery, refreshProgress, userSettings, showSettings, themeMode } from '../stores';
     import { addNewFeed, refreshAllFeeds, syncFeed } from '../rss';
@@ -10,14 +10,12 @@
     const feeds = liveQuery(() => db.feeds.toArray());
     const unreadCounts = liveQuery(async () => {
         const unread = await db.articles.where('read').equals(0).toArray();
-        const counts: Record<string | number, number> = { all: unread.length };
+        const starred = await db.articles.where('starred').equals(1).toArray();
+        const counts: Record<string | number, number> = { all: unread.length, starred: starred.length };
         
         unread.forEach(a => {
             if (a.feedId) {
                 counts[a.feedId] = (counts[a.feedId] || 0) + 1;
-            }
-            if (a.starred) {
-                counts['starred'] = (counts['starred'] || 0) + 1;
             }
         });
         return counts;
@@ -33,14 +31,20 @@
     let refreshingFeeds = new Set<number>();
     
     async function handleAddFeed() {
-         if (!newFeedUrl) return;
-         try {
-             await addNewFeed(newFeedUrl);
-             newFeedUrl = '';
-         } catch (e) {
-             console.error('Failed to add feed', e);
-         }
-     }
+        const url = newFeedUrl.trim();
+        if (!url) return;
+        try {
+            await addNewFeed(url);
+            newFeedUrl = '';
+        } catch (e) {
+            if (e instanceof Dexie.ConstraintError) {
+                alert('Feed already exists.');
+            } else {
+                console.error('Failed to add feed', e);
+                alert('Could not add feed. Please try again.');
+            }
+        }
+    }
     
     function selectFeed(id: number | undefined) {
         if (id !== undefined) $selectedFeedId = id;
@@ -82,16 +86,16 @@
 
     async function handleDeleteFeed(feed: Feed, e: Event) {
         e.stopPropagation();
-        if (!feed.id) return;
+        const id = feed.id;
+        if (id === undefined) return;
         if (!confirm(`Are you sure you want to delete "${feed.title}"?`)) return;
         
-        await db.feeds.delete(feed.id);
-        // Also clean up articles? Dexie doesn't cascade delete by default usually, 
-        // but for now we just delete the feed. 
-        // Ideally we should delete articles too:
-        await db.articles.where('feedId').equals(feed.id).delete();
+        await db.transaction('rw', db.feeds, db.articles, async () => {
+            await db.articles.where('feedId').equals(id).delete();
+            await db.feeds.delete(id);
+        });
         
-        if ($selectedFeedId === feed.id) {
+        if ($selectedFeedId === id) {
             $selectedFeedId = 'all';
         }
     }

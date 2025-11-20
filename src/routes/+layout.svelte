@@ -4,6 +4,11 @@
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import { showHelp, showSettings, themeMode } from '$lib/stores';
 
+	export let data;
+	export let params;
+	export let form;
+	const _kitProps = { data, params, form };
+
 	function handleGlobalKeydown(e: KeyboardEvent) {
 		// Toggle help on '?' or Shift+'/'
 		if (e.key === '?' || (e.shiftKey && e.key === '/')) {

@@ -12,8 +12,8 @@ export const GET: RequestHandler = async ({ url }) => {
     try {
         const response = await fetch(feedUrl, {
             headers: {
-                'User-Agent': 'Vesper RSS Reader (compatible; +https://github.com/lsj5031/vesper)',
-                'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
+                'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*;q=0.9',
                 ...(refresh ? { 'Cache-Control': 'no-cache' } : {})
             },
             // Add a timeout to prevent hanging

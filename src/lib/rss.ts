@@ -5,12 +5,34 @@ import { tokenize } from './search';
 import { refreshProgress } from './stores';
 
 
-// Initialize Parser
+// Initialize Parser with error-tolerant settings
 const parser = new Parser({
     customFields: {
         item: ['media:content', 'media:thumbnail', 'content:encoded', 'dc:creator'],
+    },
+    defaultRSS: 2.0,  // Assume RSS 2.0 if detection fails
+    xml2js: {
+        strict: false,  // Disable strict XML parsing
+        resolveNamespace: true,
+        normalizeTags: true
     }
 });
+
+// Pre-process malformed feeds to fix common issues
+function cleanupMalformedXML(xmlText: string): string {
+    // Merge adjacent CDATA sections (e.g., ]]><![CDATA[ -> join content)
+    xmlText = xmlText.replace(/\]\]>\s*<!\[CDATA\[/g, '');
+    
+    // Fix attributes without values, but only inside start tags (avoid touching text/CDATA)
+    xmlText = xmlText.replace(/<[^/?!][^>]*>/g, (tag) =>
+        tag.replace(/(\s+[^\s=\/>]+)(?=(?:\s|\/)*>)/g, '$1=""')
+    );
+    
+    // Fix unclosed self-closing tags (br, img, hr, etc)
+    xmlText = xmlText.replace(/(<(?:br|img|hr|input|meta|link)[^>]*)(?<!\/)(>)/g, '$1/$2');
+    
+    return xmlText;
+}
 
 // Initialize DOMPurify (needs window context, so check for browser)
 let sanitize = (html: string) => html;
@@ -21,32 +43,100 @@ if (typeof window !== 'undefined') {
     });
 }
 
-export async function fetchFeed(url: string, maxRetries = 2, forceRefresh = false) {
-    // Use backend proxy endpoint to avoid CORS issues
-    let proxyUrl = `/api/fetch-feed?url=${encodeURIComponent(url)}`;
-    if (forceRefresh) {
-        proxyUrl += '&refresh=true';
-    }
-    
-    let lastError: any;
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-            const response = await fetch(proxyUrl);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            
-            const text = await response.text();
-            const feedData = await parser.parseString(text);
-            
-            return feedData;
-        } catch (e) {
-            lastError = e;
-            // Only retry on network errors, not on parse errors
-            if (attempt < maxRetries && (e instanceof TypeError || (e as any).message?.includes('HTTP'))) {
-                await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1))); // Exponential backoff
-                continue;
+function normalizeFeedUrl(url: string): string {
+    try {
+        const parsed = new URL(url.trim());
+
+        if (parsed.hostname === 'feeds.feedburner.com' || parsed.hostname === 'feedburner.google.com') {
+            parsed.searchParams.set('format', 'xml');
+            if (!parsed.searchParams.has('fmt')) parsed.searchParams.set('fmt', 'xml');
+
+            if (parsed.pathname === '/' || parsed.pathname === '') {
+                parsed.pathname = `/feeds/${parsed.hostname.split('.').reverse().join('/')}`;
             }
-            break;
         }
+
+        return parsed.toString();
+    } catch {
+        return url.trim();
+    }
+}
+
+function withFormatParam(url: string, key: string): string {
+    try {
+        const parsed = new URL(url);
+        if (!parsed.searchParams.has(key)) {
+            parsed.searchParams.set(key, 'xml');
+            return parsed.toString();
+        }
+    } catch {
+        return url;
+    }
+    return url;
+}
+
+function buildFeedUrlVariants(url: string): string[] {
+    const variants = new Set<string>();
+    const normalized = normalizeFeedUrl(url);
+    variants.add(normalized);
+
+    variants.add(withFormatParam(normalized, 'format'));
+    variants.add(withFormatParam(normalized, 'fmt'));
+
+    const trimmedTrailingSlash = normalized.replace(/\/+$/, '');
+    variants.add(withFormatParam(trimmedTrailingSlash, 'format'));
+
+    try {
+        const flipped = new URL(normalized);
+        flipped.protocol = flipped.protocol === 'https:' ? 'http:' : 'https:';
+        variants.add(flipped.toString());
+    } catch {
+        // ignore malformed URLs when flipping protocol
+    }
+
+    return Array.from(variants);
+}
+
+export async function fetchFeed(url: string, maxRetries = 2, forceRefresh = false) {
+    let lastError: any;
+    const candidates = buildFeedUrlVariants(url);
+
+    for (const candidate of candidates) {
+        let candidateError: any;
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            const proxyUrl = `/api/fetch-feed?url=${encodeURIComponent(candidate)}${forceRefresh ? '&refresh=true' : ''}`;
+
+            try {
+                const response = await fetch(proxyUrl);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                let text = await response.text();
+                // Pre-process malformed XML before parsing
+                text = cleanupMalformedXML(text);
+                
+                try {
+                    const feedData = await parser.parseString(text);
+                    return feedData;
+                } catch (parseErr) {
+                    // Log detailed parse error and first 500 chars of cleaned XML
+                    console.warn(`Parse error for ${candidate}:`, parseErr);
+                    console.log(`Cleaned XML (first 500 chars): ${text.substring(0, 500)}`);
+                    throw parseErr;
+                }
+            } catch (e) {
+                candidateError = e;
+                lastError = e;
+                const isRetryable = e instanceof TypeError || (e as any).message?.includes('HTTP');
+                if (attempt < maxRetries && isRetryable) {
+                    await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1))); // Exponential backoff
+                    continue;
+                }
+                break;
+            }
+        }
+
+        if (!candidateError) break;
     }
     
     console.error(`Failed to fetch ${url} after ${maxRetries + 1} attempts`, lastError);

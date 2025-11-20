@@ -125,8 +125,10 @@
         if (!confirm(`Delete "${currentFeed.title}"? This action cannot be undone.`)) return;
         
         const id = currentFeed.id;
-        await db.feeds.delete(id);
-        await db.articles.where('feedId').equals(id).delete();
+        await db.transaction('rw', db.feeds, db.articles, async () => {
+            await db.articles.where('feedId').equals(id).delete();
+            await db.feeds.delete(id);
+        });
         $selectedFeedId = 'all';
     }
     
