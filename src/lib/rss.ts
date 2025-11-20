@@ -12,9 +12,8 @@ const parser = new Parser({
     },
     defaultRSS: 2.0,  // Assume RSS 2.0 if detection fails
     xml2js: {
-        strict: false,  // Disable strict XML parsing
-        resolveNamespace: true,
-        normalizeTags: true
+        // Keep namespace-aware parsing but preserve original tag casing so pubDate/isoDate stay intact
+        resolveNamespace: true
     }
 });
 
@@ -23,13 +22,11 @@ function cleanupMalformedXML(xmlText: string): string {
     // Merge adjacent CDATA sections (e.g., ]]><![CDATA[ -> join content)
     xmlText = xmlText.replace(/\]\]>\s*<!\[CDATA\[/g, '');
     
-    // Fix attributes without values, but only inside start tags (avoid touching text/CDATA)
-    xmlText = xmlText.replace(/<[^/?!][^>]*>/g, (tag) =>
-        tag.replace(/(\s+[^\s=\/>]+)(?=(?:\s|\/)*>)/g, '$1=""')
-    );
-    
+    // Repair patterns like <link/>http://example.com</link> which break XML parsers
+    xmlText = xmlText.replace(/<(title|link|description|guid)\s*\/>([^<]+)/gi, '<$1>$2</$1>');
+
     // Fix unclosed self-closing tags (br, img, hr, etc)
-    xmlText = xmlText.replace(/(<(?:br|img|hr|input|meta|link)[^>]*)(?<!\/)(>)/g, '$1/$2');
+    xmlText = xmlText.replace(/(<(?:br|img|hr|input|meta)[^>]*)(?<!\/)(>)/g, '$1/$2');
     
     return xmlText;
 }
@@ -199,10 +196,14 @@ export async function syncFeed(feed: Feed, unreadLimit = 50, forceRefresh = fals
             const contentRaw = item['content:encoded'] || item.content || item.summary || '';
             const cleanContent = sanitize(contentRaw);
             const resolvedLink = resolveItemLink(item, feed);
+            const commentsLink = typeof (item as any).comments === 'string' ? (item as any).comments : '';
+            const guidCandidate = [item.guid, (item as any).id, commentsLink, item.link, item.title].find(
+                (candidate): candidate is string => typeof candidate === 'string' && candidate.trim() !== ''
+            );
             
             return {
                 feedId: feed.id!,
-                guid: item.guid || item.link || item.title || Math.random().toString(),
+                guid: guidCandidate || Math.random().toString(),
                 title: item.title || 'Untitled',
                 link: resolvedLink,
                 content: cleanContent,
@@ -231,6 +232,26 @@ export async function syncFeed(feed: Feed, unreadLimit = 50, forceRefresh = fals
             
         existingRecords.forEach(r => existingGuidsSet.add(r.guid));
 
+        // Build lookups for backfilling missing links
+        const processedByGuid = new Map<string, Article>();
+        const processedByTitle = new Map<string, Article>();
+
+        for (const article of processedArticles) {
+            if (!article.link) continue;
+
+            if (!processedByGuid.has(article.guid)) {
+                processedByGuid.set(article.guid, article);
+            }
+
+            const titleKey = article.title.trim().toLowerCase();
+            if (titleKey && !processedByTitle.has(titleKey)) {
+                processedByTitle.set(titleKey, article);
+            }
+        }
+
+        const matchedProcessedGuids = new Set<string>();
+        const updatedArticleIds = new Set<number>();
+
         // Backfill missing links on existing articles when we can now resolve them
         const existingByGuid = new Map(existingRecords.map(r => [r.guid, r]));
         const articlesNeedingLinkUpdate = processedArticles.filter(a => {
@@ -244,10 +265,41 @@ export async function syncFeed(feed: Feed, unreadLimit = 50, forceRefresh = fals
                     db.articles.where('[feedId+guid]').equals([feed.id!, article.guid]).modify({ link: article.link })
                 )
             );
+
+            articlesNeedingLinkUpdate.forEach(article => {
+                matchedProcessedGuids.add(article.guid);
+                const existing = existingByGuid.get(article.guid);
+                if (existing?.id !== undefined) updatedArticleIds.add(existing.id);
+            });
+        }
+
+        // If GUID changed between runs (e.g., we previously fell back to title), attempt a title-based backfill
+        const missingLinkRecords = await db.articles
+            .where('feedId')
+            .equals(feed.id!)
+            .and(r => !r.link || r.link.trim() === '')
+            .toArray();
+
+        const titleBackfills: { id: number; link: string }[] = [];
+
+        for (const record of missingLinkRecords) {
+            if (record.id === undefined || updatedArticleIds.has(record.id)) continue;
+
+            const titleKey = (record.title || '').trim().toLowerCase();
+            const match = processedByGuid.get(record.guid) || (titleKey ? processedByTitle.get(titleKey) : undefined);
+
+            if (match?.link && match.link !== record.link) {
+                titleBackfills.push({ id: record.id, link: match.link });
+                matchedProcessedGuids.add(match.guid);
+            }
+        }
+
+        if (titleBackfills.length > 0) {
+            await Promise.all(titleBackfills.map(update => db.articles.update(update.id, { link: update.link })));
         }
 
         const newArticles = processedArticles.filter(
-            a => !existingGuidsSet.has(a.guid)
+            a => !existingGuidsSet.has(a.guid) && !matchedProcessedGuids.has(a.guid)
         );
 
         // Auto-Archive Strategy:
