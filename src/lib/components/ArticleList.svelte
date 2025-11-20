@@ -212,83 +212,78 @@
     }
 
     async function markAllRead() {
-        if (!confirm('Mark all visible articles as read?')) return;
-        
-        const articles: Article[] = $articlesStore || [];
-        const ids = articles.map(a => a.id).filter((id): id is number => id !== undefined);
-        
-        if (ids.length === 0) return;
+         const articles: Article[] = $articlesStore || [];
+         const ids = articles.map(a => a.id).filter((id): id is number => id !== undefined);
+         
+         if (ids.length === 0) return;
 
-        await markArticlesAsRead(ids);
-    }
+         await markArticlesAsRead(ids);
+     }
 
     async function markAllUnread() {
-        if (!confirm('Mark all visible articles as unread?')) return;
-        
-        const articles: Article[] = $articlesStore || [];
-        const ids = articles.map(a => a.id).filter((id): id is number => id !== undefined);
-        
-        if (ids.length === 0) return;
+         const articles: Article[] = $articlesStore || [];
+         const ids = articles.map(a => a.id).filter((id): id is number => id !== undefined);
+         
+         if (ids.length === 0) return;
 
-        await markArticlesAsUnread(ids);
-    }
+         await markArticlesAsUnread(ids);
+     }
 
     async function markFeedRead() {
-        if (typeof $selectedFeedId !== 'number') return;
-        if (!confirm(`Mark all articles in this feed as read?`)) return;
-        await markFeedAsRead($selectedFeedId);
-    }
+         if (typeof $selectedFeedId !== 'number') return;
+         await markFeedAsRead($selectedFeedId);
+     }
 
     function isArticleSelected(id: number | undefined): boolean {
         return id !== undefined && selectedIds.has(id);
     }
 
     function handleListKeydown(e: KeyboardEvent) {
-        // Don't trigger when typing in input fields
-        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-            return;
-        }
+         // Don't trigger when typing in input fields
+         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+             return;
+         }
 
-        const articles: Article[] = $articlesStore || [];
-        if (articles.length === 0) return;
+         const articles: Article[] = $articlesStore || [];
+         if (articles.length === 0) return;
 
-        // Refresh all feeds on 'r'
-        if (e.key === 'r' || e.key === 'R') {
-            if (!$refreshProgress) {
-                refreshAllFeeds();
-            }
-            return;
-        }
+         // Refresh all feeds on 'r'
+         if (e.key === 'r' || e.key === 'R') {
+             if (!$refreshProgress) {
+                 refreshAllFeeds();
+             }
+             return;
+         }
 
-        // Navigation: j (next), k (previous)
-        if (e.key === 'j' || e.key === 'k') {
-            const currentIndex = articles.findIndex(a => a.id === $selectedArticleId);
-            let newIndex = currentIndex;
+         // Navigation: j (next), k (previous)
+         if (e.key === 'j' || e.key === 'k') {
+             const currentIndex = articles.findIndex(a => a.id === $selectedArticleId);
+             let newIndex = currentIndex;
 
-            if (e.key === 'j') {
-                // Next article
-                newIndex = currentIndex + 1;
-                if (newIndex >= articles.length) newIndex = articles.length - 1;
-            } else if (e.key === 'k') {
-                // Previous article
-                newIndex = currentIndex - 1;
-                if (newIndex < 0) newIndex = 0;
-            }
+             if (e.key === 'j') {
+                 // Next article
+                 newIndex = currentIndex + 1;
+                 if (newIndex >= articles.length) newIndex = articles.length - 1;
+             } else if (e.key === 'k') {
+                 // Previous article
+                 newIndex = currentIndex - 1;
+                 if (newIndex < 0) newIndex = 0;
+             }
 
-            if (newIndex >= 0 && newIndex < articles.length) {
-                const newArticleId = articles[newIndex].id;
-                if (newArticleId !== undefined) {
-                    $selectedArticleId = newArticleId;
-                    
-                    // Scroll into view
-                    const element = document.getElementById('article-list-item-' + newArticleId);
-                    if (element) {
-                        element.scrollIntoView({ block: 'nearest' });
-                    }
-                }
-            }
-        }
-    }
+             if (newIndex >= 0 && newIndex < articles.length) {
+                 const newArticleId = articles[newIndex].id;
+                 if (newArticleId !== undefined) {
+                     $selectedArticleId = newArticleId;
+                     
+                     // Scroll into view
+                     const element = document.getElementById('article-list-item-' + newArticleId);
+                     if (element) {
+                         element.scrollIntoView({ block: 'nearest' });
+                     }
+                 }
+             }
+         }
+     }
 
     function handleWindowClick(event: MouseEvent) {
         const target = event.target as HTMLElement | null;

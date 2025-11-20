@@ -11,18 +11,18 @@
     $: isDark = $themeMode === 'dark';
 
     function handleFileSelect(e: Event) {
-        const input = e.target as HTMLInputElement;
-        if (input.files?.length) {
-            importOPML(input.files[0]).then(() => alert('Imported!'));
-        }
-    }
+         const input = e.target as HTMLInputElement;
+         if (input.files?.length) {
+             importOPML(input.files[0]);
+         }
+     }
 
     function handleBackupSelect(e: Event) {
-        const input = e.target as HTMLInputElement;
-        if (input.files?.length) {
-            importBackup(input.files[0]).then(() => alert('Restored!'));
-        }
-    }
+         const input = e.target as HTMLInputElement;
+         if (input.files?.length) {
+             importBackup(input.files[0]);
+         }
+     }
 </script>
 
 <div class="fixed inset-0 z-50 flex items-center justify-center" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-paper)'}`}>

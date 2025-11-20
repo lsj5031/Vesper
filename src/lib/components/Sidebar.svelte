@@ -33,14 +33,14 @@
     let refreshingFeeds = new Set<number>();
     
     async function handleAddFeed() {
-        if (!newFeedUrl) return;
-        try {
-            await addNewFeed(newFeedUrl);
-            newFeedUrl = '';
-        } catch (e) {
-            alert('Failed to add feed');
-        }
-    }
+         if (!newFeedUrl) return;
+         try {
+             await addNewFeed(newFeedUrl);
+             newFeedUrl = '';
+         } catch (e) {
+             console.error('Failed to add feed', e);
+         }
+     }
     
     function selectFeed(id: number | undefined) {
         if (id !== undefined) $selectedFeedId = id;
@@ -118,8 +118,8 @@
     onDestroy(() => clearInterval(refreshTimer));
 
     function toggleTheme() {
-        $themeMode = $themeMode === 'dark' ? 'light' : 'dark';
-    }
+         $themeMode = $themeMode === 'dark' ? 'light' : 'dark';
+     }
 </script>
 
 <div 
