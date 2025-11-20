@@ -335,17 +335,6 @@
     <div class="px-4 py-3 sticky top-0 z-10" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-paper)'};border-bottom: 1px solid ${isDark ? 'var(--o3-color-palette-black-30)' : 'var(--o3-color-palette-black-10)'}`}>
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div class="flex items-center gap-2 min-w-0">
-                <span class="text-xs font-bold uppercase tracking-wider truncate" class:text-o3-black-40={isDark} class:text-o3-black-70={!isDark}>
-                    {#if selectionMode}
-                        {selectedIds.size} Selected
-                    {:else if $selectedFeedId === 'all'}
-                        All Articles
-                    {:else if $selectedFeedId === 'starred'}
-                        Starred
-                    {:else}
-                        Feed Articles
-                    {/if}
-                </span>
             </div>
 
             <div class="flex items-center gap-3 flex-wrap justify-end">

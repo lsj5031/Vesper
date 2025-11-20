@@ -25,7 +25,7 @@
     }
 </script>
 
-<div class="fixed inset-0 z-50 flex items-center justify-center" style={`background:${isDark ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)'}`}>
+<div class="fixed inset-0 z-50 flex items-center justify-center" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-paper)'}`}>
     <button 
         class="fixed inset-0 cursor-default"
         on:click={close}
@@ -49,15 +49,23 @@
                 <h3 class="text-sm font-bold text-o3-teal uppercase tracking-wider" style={`color:${isDark ? 'var(--o3-color-palette-teal)' : 'var(--o3-color-palette-teal)'}`}>OPML Import/Export</h3>
                 <div class="flex gap-2">
                     <button 
-                        class="flex-1 o3-button o3-button--secondary o3-button--small o3-button-icon o3-button-icon--upload" 
-                        data-o3-theme="inverse"
+                        class="flex-1 px-3 py-2 rounded text-xs font-semibold uppercase tracking-wide transition-colors border"
+                        class:border-o3-teal={true}
+                        class:text-o3-teal={true}
+                        class:bg-o3-teal={false}
+                        class:text-o3-black-90={false}
+                        style={isDark ? 'border-opacity: 0.5; background: rgba(17, 153, 142, 0.1)' : 'border-opacity: 0.3; background: rgba(17, 153, 142, 0.05)'}
                         on:click={() => document.getElementById('opmlInput')?.click()}
                     >
                         Import OPML
                     </button>
                     <button 
-                        class="flex-1 o3-button o3-button--secondary o3-button--small o3-button-icon o3-button-icon--download" 
-                        data-o3-theme="inverse"
+                        class="flex-1 px-3 py-2 rounded text-xs font-semibold uppercase tracking-wide transition-colors border"
+                        class:border-o3-teal={true}
+                        class:text-o3-teal={true}
+                        class:bg-o3-teal={false}
+                        class:text-o3-black-90={false}
+                        style={isDark ? 'border-opacity: 0.5; background: rgba(17, 153, 142, 0.1)' : 'border-opacity: 0.3; background: rgba(17, 153, 142, 0.05)'}
                         on:click={exportOPML}
                     >
                         Export OPML
@@ -71,15 +79,23 @@
                 <h3 class="text-sm font-bold text-o3-teal uppercase tracking-wider" style={`color:${isDark ? 'var(--o3-color-palette-teal)' : 'var(--o3-color-palette-teal)'}`}>Full Backup</h3>
                 <div class="flex gap-2">
                     <button 
-                        class="flex-1 o3-button o3-button--secondary o3-button--small o3-button-icon o3-button-icon--restore" 
-                        data-o3-theme="inverse"
+                        class="flex-1 px-3 py-2 rounded text-xs font-semibold uppercase tracking-wide transition-colors border"
+                        class:border-o3-teal={true}
+                        class:text-o3-teal={true}
+                        class:bg-o3-teal={false}
+                        class:text-o3-black-90={false}
+                        style={isDark ? 'border-opacity: 0.5; background: rgba(17, 153, 142, 0.1)' : 'border-opacity: 0.3; background: rgba(17, 153, 142, 0.05)'}
                         on:click={() => document.getElementById('backupInput')?.click()}
                     >
                         Restore Backup
                     </button>
                     <button 
-                        class="flex-1 o3-button o3-button--secondary o3-button--small o3-button-icon o3-button-icon--download" 
-                        data-o3-theme="inverse"
+                        class="flex-1 px-3 py-2 rounded text-xs font-semibold uppercase tracking-wide transition-colors border"
+                        class:border-o3-teal={true}
+                        class:text-o3-teal={true}
+                        class:bg-o3-teal={false}
+                        class:text-o3-black-90={false}
+                        style={isDark ? 'border-opacity: 0.5; background: rgba(17, 153, 142, 0.1)' : 'border-opacity: 0.3; background: rgba(17, 153, 142, 0.05)'}
                         on:click={exportBackup}
                     >
                         Backup Data
@@ -91,8 +107,8 @@
 
         <div class="mt-8 text-center">
             <button 
-                class="o3-button o3-button--ghost o3-button--small"
-                data-o3-theme="inverse"
+                class="px-4 py-2 rounded text-xs font-semibold uppercase tracking-wide transition-colors text-o3-black-40 hover:text-o3-black-60"
+                class:hover:text-o3-black-50={isDark}
                 on:click={close}
             >
                 Close
