@@ -61,6 +61,16 @@
             </div>
 
             <div class="flex justify-between items-start">
+                <span class="text-sm" style={`color:${isDark ? 'var(--o3-color-palette-black-40)' : 'var(--o3-color-palette-black-70)'}`}>Open Original Link</span>
+                <kbd class="border rounded px-2 py-1 text-xs font-mono text-o3-teal" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-black-10)'};border-color:${isDark ? 'var(--o3-color-palette-black-30)' : 'var(--o3-color-palette-black-20)'}`}>o</kbd>
+            </div>
+
+            <div class="flex justify-between items-start">
+                <span class="text-sm" style={`color:${isDark ? 'var(--o3-color-palette-black-40)' : 'var(--o3-color-palette-black-70)'}`}>Scroll Down Page</span>
+                <kbd class="border rounded px-2 py-1 text-xs font-mono text-o3-teal" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-black-10)'};border-color:${isDark ? 'var(--o3-color-palette-black-30)' : 'var(--o3-color-palette-black-20)'}`}>Space</kbd>
+            </div>
+
+            <div class="flex justify-between items-start">
                 <span class="text-sm" style={`color:${isDark ? 'var(--o3-color-palette-black-40)' : 'var(--o3-color-palette-black-70)'}`}>Close Modals</span>
                 <kbd class="border rounded px-2 py-1 text-xs font-mono text-o3-teal" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-black-10)'};border-color:${isDark ? 'var(--o3-color-palette-black-30)' : 'var(--o3-color-palette-black-20)'}`}>Esc</kbd>
             </div>
