@@ -36,7 +36,7 @@
         }
 
         // Open original link (o key)
-        if ((event.key === 'o' || event.key === 'O') && $articleStore) {
+        if ((event.key === 'o' || event.key === 'O') && $articleStore?.link) {
             window.open($articleStore.link, '_blank');
             event.preventDefault();
             return;
@@ -99,9 +99,13 @@
                 </div>
 
                 <div class="mt-4">
-                     <a href={$articleStore.link} target="_blank" class="text-xs text-o3-teal hover:text-o3-white transition-colors">
-                        Read Original ↗
-                    </a>
+                     {#if $articleStore.link}
+                        <a href={$articleStore.link} target="_blank" rel="noreferrer" class="text-xs text-o3-teal hover:text-o3-white transition-colors">
+                            Read Original ↗
+                        </a>
+                    {:else}
+                        <span class="text-xs text-o3-black-50">Original link unavailable</span>
+                    {/if}
                 </div>
             </header>
 

@@ -43,6 +43,46 @@ if (typeof window !== 'undefined') {
     });
 }
 
+function resolveUrl(candidate: string, bases: string[]): string {
+    const trimmed = candidate.trim();
+    if (!trimmed) return '';
+
+    try {
+        // Absolute URL
+        return new URL(trimmed).toString();
+    } catch {
+        // Try resolving relative URLs against provided bases
+        for (const base of bases) {
+            try {
+                return new URL(trimmed, base).toString();
+            } catch {
+                continue;
+            }
+        }
+    }
+
+    return '';
+}
+
+function resolveItemLink(item: any, feed: Feed): string {
+    const baseCandidates = [feed.website, feed.url].filter(Boolean) as string[];
+
+    const linkCandidate = Array.isArray(item.link) ? item.link[0] : item.link;
+    // rss-parser sometimes returns Atom links as objects with href
+    const rawLink =
+        (typeof linkCandidate === 'string' && linkCandidate) ? linkCandidate :
+        (linkCandidate && typeof linkCandidate.href === 'string') ? linkCandidate.href :
+        '';
+
+    const guidCandidate = typeof item.guid === 'string' ? item.guid : '';
+
+    return (
+        resolveUrl(rawLink, baseCandidates) ||
+        resolveUrl(guidCandidate, baseCandidates) ||
+        ''
+    );
+}
+
 function normalizeFeedUrl(url: string): string {
     try {
         const parsed = new URL(url.trim());
@@ -158,12 +198,13 @@ export async function syncFeed(feed: Feed, unreadLimit = 50, forceRefresh = fals
         const processedArticles: Article[] = data.items.map(item => {
             const contentRaw = item['content:encoded'] || item.content || item.summary || '';
             const cleanContent = sanitize(contentRaw);
+            const resolvedLink = resolveItemLink(item, feed);
             
             return {
                 feedId: feed.id!,
                 guid: item.guid || item.link || item.title || Math.random().toString(),
                 title: item.title || 'Untitled',
-                link: item.link || '',
+                link: resolvedLink,
                 content: cleanContent,
                 snippet: cleanContent.replace(/<[^>]*>?/gm, '').substring(0, 150) + '...',
                 author: item.creator || item['dc:creator'],
@@ -189,6 +230,21 @@ export async function syncFeed(feed: Feed, unreadLimit = 50, forceRefresh = fals
             .toArray();
             
         existingRecords.forEach(r => existingGuidsSet.add(r.guid));
+
+        // Backfill missing links on existing articles when we can now resolve them
+        const existingByGuid = new Map(existingRecords.map(r => [r.guid, r]));
+        const articlesNeedingLinkUpdate = processedArticles.filter(a => {
+            const existing = existingByGuid.get(a.guid);
+            return existing && (!existing.link || existing.link.trim() === '') && a.link;
+        });
+
+        if (articlesNeedingLinkUpdate.length > 0) {
+            await Promise.all(
+                articlesNeedingLinkUpdate.map(article =>
+                    db.articles.where('[feedId+guid]').equals([feed.id!, article.guid]).modify({ link: article.link })
+                )
+            );
+        }
 
         const newArticles = processedArticles.filter(
             a => !existingGuidsSet.has(a.guid)
