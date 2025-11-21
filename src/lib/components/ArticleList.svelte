@@ -82,7 +82,17 @@
             let results: Article[] = [];
             
             if (fid === 'all') {
-                 results = await (collection as any).limit(200).toArray();
+                 // When filtering unread in All view, query unread directly so we don't drop older unread items when the latest 200 are already read.
+                 if (status === 'unread') {
+                    results = await db.articles
+                        .orderBy('isoDate')
+                        .reverse()
+                        .filter(a => a.read === 0)
+                        .limit(200)
+                        .toArray();
+                 } else {
+                    results = await (collection as any).limit(200).toArray();
+                 }
             } else if (fid === 'starred') {
                  results = await db.articles.where('starred').equals(1).reverse().sortBy('isoDate');
             } else if (typeof fid === 'number') {
@@ -90,7 +100,7 @@
             }
 
             // Apply memory filter for read/unread if needed
-            if (status === 'unread') {
+            if (status === 'unread' && fid !== 'all') {
                 results = results.filter(a => a.read === 0);
             }
 
