@@ -9,25 +9,36 @@
 
     let isDark: boolean;
     $: isDark = $themeMode === 'dark';
+    let errorMessage: string | null = null;
 
     async function handleFileSelect(e: Event) {
          const input = e.target as HTMLInputElement;
          if (input.files?.length) {
+            errorMessage = null;
             const file = input.files[0];
             try {
                 await importOPML(file);
-                input.value = '';
                 close();
             } catch (err) {
                 console.error('Failed to import OPML', err);
+                errorMessage = 'Import failed. Make sure the OPML file is valid and try again.';
             }
+            input.value = '';
          }
      }
 
-    function handleBackupSelect(e: Event) {
+    async function handleBackupSelect(e: Event) {
          const input = e.target as HTMLInputElement;
          if (input.files?.length) {
-             importBackup(input.files[0]);
+            errorMessage = null;
+            try {
+                await importBackup(input.files[0]);
+                close();
+            } catch (err) {
+                console.error('Failed to restore backup', err);
+                errorMessage = 'Restore failed. Please confirm this is a Vesper backup JSON file.';
+            }
+            input.value = '';
          }
      }
 </script>
@@ -49,6 +60,16 @@
             <h2 class="text-2xl font-headline font-bold mb-2" style={`color:${isDark ? 'var(--o3-color-palette-white)' : 'var(--o3-color-palette-black-90)'}`}>Settings & Data</h2>
             <p class="text-sm" style={`color:${isDark ? 'var(--o3-color-palette-black-40)' : 'var(--o3-color-palette-black-70)'}`}>Manage your feeds and data</p>
         </div>
+
+        {#if errorMessage}
+            <div 
+                class="mb-4 rounded border border-o3-claret px-3 py-2"
+                style={`background:${isDark ? 'rgba(126, 15, 51, 0.12)' : 'rgba(126, 15, 51, 0.05)'}`}
+            >
+                <p class="text-sm font-semibold text-o3-claret">Something went wrong</p>
+                <p class="text-xs" style={`color:${isDark ? 'var(--o3-color-palette-white-80)' : 'var(--o3-color-palette-black-70)'}`}>{errorMessage}</p>
+            </div>
+        {/if}
 
         <div class="space-y-6">
             <!-- OPML -->
