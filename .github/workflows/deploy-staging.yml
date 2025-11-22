@@ -33,3 +33,4 @@ jobs:
           projectName: ${{ vars.CLOUDFLARE_PROJECT_NAME }}
           directory: build
           branch: staging
+          wranglerVersion: '3'
