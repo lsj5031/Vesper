@@ -31,6 +31,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: ${{ vars.CLOUDFLARE_PROJECT_NAME }}
-          directory: build
+          directory: .svelte-kit/cloudflare
           branch: staging
-          wranglerVersion: '3'
