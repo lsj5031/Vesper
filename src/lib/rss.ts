@@ -77,29 +77,13 @@ function normalizeFeedUrl(url: string): string {
     }
 }
 
-function withFormatParam(url: string, key: string): string {
-    try {
-        const parsed = new URL(url);
-        if (!parsed.searchParams.has(key)) {
-            parsed.searchParams.set(key, 'xml');
-            return parsed.toString();
-        }
-    } catch {
-        return url;
-    }
-    return url;
-}
-
 function buildFeedUrlVariants(url: string): string[] {
     const variants = new Set<string>();
     const normalized = normalizeFeedUrl(url);
     variants.add(normalized);
 
-    variants.add(withFormatParam(normalized, 'format'));
-    variants.add(withFormatParam(normalized, 'fmt'));
-
     const trimmedTrailingSlash = normalized.replace(/\/+$/, '');
-    variants.add(withFormatParam(trimmedTrailingSlash, 'format'));
+    variants.add(trimmedTrailingSlash);
 
     try {
         const flipped = new URL(normalized);

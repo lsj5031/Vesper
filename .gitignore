@@ -8,3 +8,4 @@ build
 pnpm-lock.yaml
 yarn.lock
 *.log
+.wrangler
