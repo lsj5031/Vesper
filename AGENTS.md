@@ -13,7 +13,7 @@ npm run check:watch       # Watch mode type-checking
 - **Framework**: SvelteKit 2 (SSR off, prerendered SPA)
 - **Database**: Dexie.js (IndexedDB) for offline-first storage
 - **UI Framework**: Skeleton Labs + Tailwind CSS + FT Origami O3 design tokens
-- **Key Libraries**: rss-parser, DOMPurify, date-fns
+- **Key Libraries**: fast-xml-parser, DOMPurify, date-fns
 
 **Directory Structure**:
 - `src/lib/` - Core logic: `db.ts` (database & types), `stores.ts` (Svelte stores), `rss.ts` (feed sync), `search.ts` (tokenization), `opml.ts` (import/export), `components/` (UI)

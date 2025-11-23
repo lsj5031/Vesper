@@ -1,7 +1,25 @@
 {
   "name": "vesper-rss",
   "version": "0.0.1",
-  "private": true,
+  "description": "An elegant, sophisticated, completely offline-first RSS reader that looks and feels exactly like reading the Financial Times in 2025",
+  "author": "Vesper Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lsj5031/vesper"
+  },
+  "homepage": "https://github.com/lsj5031/vesper",
+  "keywords": [
+    "rss",
+    "reader",
+    "offline",
+    "pwa",
+    "svelte",
+    "sveltekit",
+    "indexeddb",
+    "dexie"
+  ],
+  "private": false,
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
