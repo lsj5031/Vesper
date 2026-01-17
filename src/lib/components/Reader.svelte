@@ -1,7 +1,7 @@
 <script lang="ts">
     import { liveQuery } from 'dexie';
     import { db } from '../db';
-    import { selectedArticleId, themeMode } from '../stores';
+    import { selectedArticleId, themeMode, activePane } from '../stores';
     import { format } from 'date-fns';
 
     // READ-ONLY query - just fetch the article
@@ -29,9 +29,24 @@
         scrollContainer.scrollTop = 0;
     }
 
+    let lastKey = '';
+    let lastKeyTime = 0;
+
     function handleKeydown(event: KeyboardEvent) {
         // Don't trigger when typing in input fields
         if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+            return;
+        }
+        
+        // Focus Switching: h -> List
+        if ($activePane === 'reader') {
+             if (event.key === 'h' || event.key === 'ArrowLeft') {
+                 activePane.set('list');
+                 event.preventDefault();
+                 return;
+             }
+        } else {
+            // Not active
             return;
         }
 
@@ -53,8 +68,40 @@
         if (event.code === 'Space' && $articleStore) {
             event.preventDefault();
             const pageHeight = scrollContainer.clientHeight;
-            scrollContainer.scrollBy({ top: pageHeight, behavior: 'smooth' });
+            // Shift+Space = Page Up, Space = Page Down (standard browser behavior, but we might trap it)
+            if (event.shiftKey) {
+                scrollContainer.scrollBy({ top: -pageHeight * 0.8, behavior: 'smooth' });
+            } else {
+                scrollContainer.scrollBy({ top: pageHeight * 0.8, behavior: 'smooth' });
+            }
             return;
+        }
+        
+        // Vim Scroll
+        const step = 150;
+        if (event.key === 'j') {
+             scrollContainer.scrollBy({ top: step, behavior: 'smooth' });
+        }
+        if (event.key === 'k') {
+             scrollContainer.scrollBy({ top: -step, behavior: 'smooth' });
+        }
+        
+        if (event.key === 'G') {
+             scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+        }
+        
+        if (event.key === 'g') {
+             const now = Date.now();
+             if (lastKey === 'g' && now - lastKeyTime < 500) {
+                 scrollToTop(); 
+                 lastKey = '';
+             } else {
+                 lastKey = 'g';
+                 lastKeyTime = now;
+             }
+             return; // Don't reset lastKey below
+        } else {
+            lastKey = '';
         }
     }
 
@@ -67,7 +114,11 @@
 
 <div 
     bind:this={scrollContainer}
-    class="h-full overflow-y-auto min-h-0 relative outline-none"
+    class="h-full overflow-y-auto min-h-0 relative outline-none transition-shadow duration-200"
+    class:ring-2={$activePane === 'reader'}
+    class:ring-inset={$activePane === 'reader'}
+    class:ring-o3-teal={$activePane === 'reader'}
+    class:ring-opacity-50={$activePane === 'reader'}
     style={`background: var(--vesper-surface);color:${$themeMode === 'dark' ? 'var(--o3-color-palette-black-20)' : 'var(--o3-color-palette-black-90)'};`}
     role="main"
     aria-label="Article Content"

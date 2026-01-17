@@ -5,6 +5,7 @@ import { localStorageStore } from '@skeletonlabs/skeleton';
 export const sidebarState = writable<'open' | 'closed'>('open'); // For mobile mostly, or collapsible
 export const selectedFeedId = writable<number | 'all' | 'starred' | null>('all');
 export const selectedArticleId = writable<number | null>(null);
+export const activePane = writable<'list' | 'reader'>('list');
 
 // Global Search/Filter
 export const searchQuery = writable<string>('');

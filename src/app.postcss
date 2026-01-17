@@ -18,6 +18,10 @@ html {
   --vesper-border: var(--o3-color-palette-black-30);
   --vesper-text: var(--o3-color-palette-white);
   --vesper-muted: var(--o3-color-palette-black-30);
+  
+  /* Scrollbar Vars (Dark Default) */
+  --vesper-scrollbar-trace: var(--o3-color-palette-black-90);
+  --vesper-scrollbar-thumb: var(--o3-color-palette-black-50);
 }
 
 body[data-theme='vesper-light'] {
@@ -26,6 +30,10 @@ body[data-theme='vesper-light'] {
   --vesper-border: var(--o3-color-palette-black-20);
   --vesper-text: var(--o3-color-palette-black-90);
   --vesper-muted: var(--o3-color-palette-black-60);
+
+  /* Scrollbar Vars (Light) */
+  --vesper-scrollbar-trace: var(--o3-color-palette-paper);
+  --vesper-scrollbar-thumb: var(--o3-color-palette-black-20);
 }
 
 @layer base {
@@ -69,14 +77,21 @@ body[data-theme='vesper-light'] {
       height: 8px;
   }
   ::-webkit-scrollbar-track {
-      background-color: var(--o3-color-palette-black-80);
+      background-color: var(--vesper-scrollbar-trace);
   }
   ::-webkit-scrollbar-thumb {
-      background-color: var(--o3-color-palette-black-50);
+      background-color: var(--vesper-scrollbar-thumb);
       border-radius: 4px;
+      border: 2px solid var(--vesper-scrollbar-trace); /* Creates padding effect */
   }
   ::-webkit-scrollbar-thumb:hover {
-      background-color: var(--o3-color-palette-black-40);
+      background-color: var(--o3-color-palette-teal);
+  }
+
+  /* Firefox Scrollbar */
+  html {
+      scrollbar-width: thin;
+      scrollbar-color: var(--vesper-scrollbar-thumb) var(--vesper-scrollbar-trace);
   }
 }
 

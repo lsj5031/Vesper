@@ -2,7 +2,7 @@
     import { liveQuery } from 'dexie';
     import { onDestroy } from 'svelte';
     import { db, type Article, type Feed, markArticlesAsRead, markArticlesAsUnread, markFeedAsRead } from '../db';
-    import { selectedFeedId, selectedArticleId, searchQuery, refreshProgress, themeMode } from '../stores';
+    import { selectedFeedId, selectedArticleId, searchQuery, refreshProgress, themeMode, activePane } from '../stores';
     import { refreshAllFeeds, syncFeed } from '../rss';
     import { formatDistanceToNow } from 'date-fns';
     import { tokenize } from '../search';
@@ -267,9 +267,37 @@
         return id !== undefined && selectedIds.has(id);
     }
 
+    function scrollToArticle(id: number, align: 'start' | 'end' | 'center' | 'nearest' = 'center') {
+        setTimeout(() => {
+            const element = document.getElementById('article-list-item-' + id);
+            if (element) {
+                element.scrollIntoView({ block: align, behavior: 'smooth' });
+            }
+        }, 10);
+    }
+
+    let lastKey = '';
+    let lastKeyTime = 0;
+
     function handleListKeydown(e: KeyboardEvent) {
          // Don't trigger when typing in input fields
          if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+             return;
+         }
+
+         // Global Focus Switch: l -> Reader
+         // Only switch if we are currently active, or if we want to support grabbing focus?
+         // User said "switch focus". Usually implies h/l works regardless? 
+         // But let's assume strict mode: only active pane handles keys.
+         
+         if ($activePane === 'list') {
+             if (e.key === 'l' || e.key === 'ArrowRight') {
+                 activePane.set('reader');
+                 e.preventDefault();
+                 return;
+             }
+         } else {
+             // If not active, ignore navigation
              return;
          }
 
@@ -283,18 +311,48 @@
              }
              return;
          }
+         
+         // Top (gg) and Bottom (G)
+         if (e.key === 'G') {
+             const lastId = articles[articles.length - 1].id;
+             if (lastId !== undefined) {
+                 $selectedArticleId = lastId;
+                 scrollToArticle(lastId, 'end');
+             }
+             return;
+         }
+
+         // Check 'gg' sequence
+         if (e.key === 'g') {
+             const now = Date.now();
+             if (lastKey === 'g' && now - lastKeyTime < 500) {
+                 // gg -> Top
+                 const firstId = articles[0].id;
+                 if (firstId !== undefined) {
+                     $selectedArticleId = firstId;
+                     scrollToArticle(firstId, 'start');
+                 }
+                 lastKey = '';
+                 return;
+             }
+             lastKey = 'g';
+             lastKeyTime = now;
+             // Don't return here, allows single 'g' binding if we had one (we don't yet)
+             return;
+         } else {
+             // Reset sequence if other key pressed (except modifiers?)
+             lastKey = '';
+         }
 
          // Navigation: j (next), k (previous)
-         if (e.key === 'j' || e.key === 'k') {
+         if (e.key === 'j' || e.key === 'k' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
              const currentIndex = articles.findIndex(a => a.id === $selectedArticleId);
              let newIndex = currentIndex;
 
-             if (e.key === 'j') {
-                 // Next article
-                 newIndex = currentIndex + 1;
+             if (e.key === 'j' || e.key === 'ArrowDown') {
+                 newIndex = currentIndex < 0 ? 0 : currentIndex + 1;
                  if (newIndex >= articles.length) newIndex = articles.length - 1;
-             } else if (e.key === 'k') {
-                 // Previous article
+             } else if (e.key === 'k' || e.key === 'ArrowUp') {
                  newIndex = currentIndex - 1;
                  if (newIndex < 0) newIndex = 0;
              }
@@ -303,15 +361,12 @@
                   const newArticleId = articles[newIndex].id;
                   if (newArticleId !== undefined) {
                       $selectedArticleId = newArticleId;
-
-                      // Scroll into view with smart positioning
-                      const element = document.getElementById('article-list-item-' + newArticleId);
-                      if (element) {
-                          const scrollBlock = e.key === 'j' ? 'start' : 'end';
-                          element.scrollIntoView({ block: scrollBlock, behavior: 'smooth' });
-                      }
+                      // Smart alignment
+                      const align = (e.key === 'j' || e.key === 'ArrowDown') ? 'start' : 'end';
+                      scrollToArticle(newArticleId, 'nearest'); // 'nearest' is less jumpy for step-by-step
                   }
               }
+              e.preventDefault();
          }
      }
 
@@ -327,11 +382,15 @@
 <svelte:window on:keydown={handleListKeydown} on:click={handleWindowClick} />
 
 <div 
-    class="h-full flex flex-col"
+    class="h-full flex flex-col transition-shadow duration-200"
+    class:ring-2={$activePane === 'list'}
+    class:ring-inset={$activePane === 'list'}
+    class:ring-o3-teal={$activePane === 'list'}
+    class:ring-opacity-50={$activePane === 'list'}
     style={`background:${$themeMode === 'dark' ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-paper)'};color:${$themeMode === 'dark' ? 'var(--o3-color-palette-white)' : 'var(--o3-color-palette-black-90)'}`}
 >
     {#if currentFeed?.error}
-        <div class="bg-o3-claret text-white px-4 py-3 flex flex-col gap-2 shrink-0 border-b border-o3-black-30">
+        <div class="bg-o3-claret text-white px-4 py-3 flex flex-col gap-2 shrink-0 border-b" class:border-o3-black-80={isDark} class:border-o3-black-30={!isDark}>
             <div class="flex items-start gap-2">
                 <span class="text-xl font-bold">!</span>
                 <div class="flex-1 min-w-0">
@@ -357,7 +416,7 @@
     {/if}
 
     <!-- Toolbar -->
-    <div class="px-4 py-3 sticky top-0 z-10" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-paper)'};border-bottom: 1px solid ${isDark ? 'var(--o3-color-palette-black-30)' : 'var(--o3-color-palette-black-10)'}`}>
+    <div class="px-4 py-3 relative z-10 shrink-0" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-paper)'};border-bottom: 1px solid ${isDark ? 'var(--o3-color-palette-black-80)' : 'var(--o3-color-palette-black-20)'}`}>
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div class="flex items-center gap-2 min-w-0">
             </div>
@@ -477,7 +536,7 @@
 
     <!-- Selection Mode Toolbar -->
     {#if selectionMode}
-        <div class="px-4 py-3 z-10" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-paper)'};border-bottom: 1px solid ${isDark ? 'var(--o3-color-palette-black-30)' : 'var(--o3-color-palette-black-10)'}`}>
+        <div class="px-4 py-3 z-10" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-paper)'};border-bottom: 1px solid ${isDark ? 'var(--o3-color-palette-black-80)' : 'var(--o3-color-palette-black-10)'}`}>
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <!-- Selection Info -->
                 <div class="flex items-baseline gap-3">
@@ -553,7 +612,10 @@
             {#each $articlesStore as article (article.id)}
                 <div
                     id={'article-list-item-' + article.id}
-                    class="relative w-full flex items-stretch border-b border-o3-black-30 group transition-colors"
+                    class="relative w-full flex items-stretch border-b group transition-colors"
+                    class:border-transparent={isArticleSelected(article.id)}
+                    class:border-o3-black-80={$themeMode === 'dark'}
+                    class:border-o3-black-30={$themeMode !== 'dark'}
                     class:bg-o3-black-80={$selectedArticleId === article.id && $themeMode === 'dark'}
                     class:bg-o3-black-10={$selectedArticleId === article.id && $themeMode !== 'dark'}
                     class:hover:bg-o3-black-80={$selectedArticleId !== article.id && $themeMode === 'dark'}
@@ -615,9 +677,19 @@
 </div>
 
 <style>
+    /* Default (Light Mode) Selection */
     :global(.selected-article) {
-        background: rgba(17, 153, 142, 0.18) !important;
-        border-color: rgba(17, 153, 142, 0.75) !important;
-        box-shadow: inset 0 0 0 1px rgba(17, 153, 142, 0.5) !important;
+        background: rgba(17, 153, 142, 0.12) !important;
+        /* Make border transparent so it blends with background - removes "white bar" artifact */
+        border-color: transparent !important;
+        /* Optional: Keep a subtle side marker or inset if needed, but for now simplify */
+        box-shadow: inset 3px 0 0 0 var(--o3-color-palette-teal) !important;
+    }
+
+    /* Dark Mode Selection */
+    :global([data-theme='vesper'] .selected-article) {
+        background: rgba(17, 153, 142, 0.15) !important;
+        border-color: transparent !important;
+        box-shadow: inset 3px 0 0 0 var(--o3-color-palette-teal) !important;
     }
 </style>
