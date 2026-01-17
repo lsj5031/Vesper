@@ -10,6 +10,9 @@
 /* Set Origami brand context */
 html {
   --o3-brand: professional;
+  background-color: var(--vesper-surface);
+  height: 100%;
+  overscroll-behavior: none;
 }
 
 :root {
@@ -210,6 +213,15 @@ body[data-theme='vesper-light'] {
 
 .bg-o3-black-90 { background-color: var(--o3-color-palette-black-90); }
 .text-o3-black-90 { color: var(--o3-color-palette-black-90); }
+
+/* Missing Border Utilities */
+.border-o3-black-80 { border-color: var(--o3-color-palette-black-80); }
+.border-o3-black-60 { border-color: var(--o3-color-palette-black-60); }
+.border-o3-black-30 { border-color: var(--o3-color-palette-black-30); }
+.border-o3-black-20 { border-color: var(--o3-color-palette-black-20); }
+.border-o3-black-10 { border-color: var(--o3-color-palette-black-10); }
+.border-o3-teal { border-color: var(--o3-color-palette-teal); }
+.border-o3-paper { border-color: var(--o3-color-palette-paper); }
 
 /* Unread Badge: Paper background with Teal text (Origami compliant) */
 .badge-unread {

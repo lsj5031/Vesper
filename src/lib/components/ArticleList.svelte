@@ -269,9 +269,32 @@
 
     function scrollToArticle(id: number, align: 'start' | 'end' | 'center' | 'nearest' = 'center') {
         setTimeout(() => {
+            const container = document.getElementById('article-list-scroll-container');
             const element = document.getElementById('article-list-item-' + id);
-            if (element) {
-                element.scrollIntoView({ block: align, behavior: 'smooth' });
+            
+            if (container && element) {
+                const elementTop = element.offsetTop;
+                const elementHeight = element.offsetHeight;
+                const containerHeight = container.clientHeight;
+                const currentScroll = container.scrollTop;
+                
+                let targetScroll = currentScroll;
+
+                if (align === 'start') {
+                    targetScroll = elementTop;
+                } else if (align === 'end') {
+                    targetScroll = elementTop - containerHeight + elementHeight;
+                } else if (align === 'center') {
+                    targetScroll = elementTop - (containerHeight / 2) + (elementHeight / 2);
+                } else if (align === 'nearest') {
+                    if (elementTop < currentScroll) {
+                        targetScroll = elementTop;
+                    } else if (elementTop + elementHeight > currentScroll + containerHeight) {
+                        targetScroll = elementTop - containerHeight + elementHeight;
+                    }
+                }
+                
+                container.scrollTo({ top: targetScroll, behavior: 'smooth' });
             }
         }, 10);
     }
@@ -607,23 +630,21 @@
     {/if}
 
     <!-- List - flex-1 with min-h-0 enables overflow scrolling -->
-    <div class="flex-1 overflow-y-auto min-h-0 relative">
+    <div id="article-list-scroll-container" class="flex-1 overflow-y-auto overflow-x-hidden min-h-0 relative" style="overflow-x: hidden !important;">
         {#if $articlesStore}
             {#each $articlesStore as article (article.id)}
                 <div
                     id={'article-list-item-' + article.id}
                     class="relative w-full flex items-stretch border-b group transition-colors"
-                    class:border-transparent={isArticleSelected(article.id)}
-                    class:border-o3-black-80={$themeMode === 'dark'}
-                    class:border-o3-black-30={$themeMode !== 'dark'}
                     class:bg-o3-black-80={$selectedArticleId === article.id && $themeMode === 'dark'}
                     class:bg-o3-black-10={$selectedArticleId === article.id && $themeMode !== 'dark'}
                     class:hover:bg-o3-black-80={$selectedArticleId !== article.id && $themeMode === 'dark'}
                     class:hover:bg-o3-black-10={$selectedArticleId !== article.id && $themeMode !== 'dark'}
                     class:selected-article={isArticleSelected(article.id)}
+                    style={`border-color: ${isArticleSelected(article.id) ? 'transparent' : ($themeMode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'var(--o3-color-palette-black-30)')}`}
                 >
                     <button 
-                        class="flex-1 text-left p-4 relative"
+                        class="flex-1 text-left p-4 relative min-w-0 focus:outline-none outline-none ring-0 focus:ring-0"
                         on:click={() => selectionMode ? toggleSelection(article.id) : selectArticle(article.id)}
                         aria-label="Read article: {article.title}"
                     >
