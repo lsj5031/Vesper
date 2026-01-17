@@ -1,12 +1,65 @@
 import { db } from './db';
 
-export async function importOPML(file: File) {
+function escapeXml(s: string): string {
+    return s
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+export interface ImportProgress {
+    current: number;
+    total: number;
+    currentFile: string;
+}
+
+/**
+ * Imports feeds and folders from an OPML file.
+ *
+ * Parses the OPML XML structure and adds feeds/folders to the database.
+ * Skips feeds that already exist (based on URL).
+ *
+ * @param file - The OPML file to import
+ * @param onProgress - Optional callback to report import progress
+ * @throws {Error} If the OPML is invalid (missing body element)
+ *
+ * @example
+ * ```ts
+ * const fileInput = document.querySelector('input[type="file"]');
+ * await importOPML(fileInput.files[0], (progress) => {
+ *     console.log(`Importing ${progress.current}/${progress.total}: ${progress.currentFile}`);
+ * });
+ * ```
+ */
+export async function importOPML(file: File, onProgress?: (progress: ImportProgress) => void) {
     const text = await file.text();
     const parser = new DOMParser();
     const xml = parser.parseFromString(text, 'text/xml');
     
+    if (xml.querySelector('parsererror')) throw new Error('Invalid OPML: XML parse error');
+
     const body = xml.querySelector('body');
-    if (!body) throw new Error('Invalid OPML');
+    if (!body) throw new Error('Invalid OPML: missing body element');
+
+    // First pass: count total items
+    const countItems = (node: Element): number => {
+        let count = 0;
+        for (const child of Array.from(node.children)) {
+            if (child.tagName.toLowerCase() === 'outline') {
+                const xmlUrl = child.getAttribute('xmlUrl');
+                if (xmlUrl) {
+                    count++;
+                } else {
+                    count += countItems(child);
+                }
+            }
+        }
+        return count;
+    };
+
+    const totalItems = countItems(body);
+    let processedItems = 0;
 
     const processOutline = async (node: Element, parentFolderId?: number) => {
         const xmlUrl = node.getAttribute('xmlUrl');
@@ -15,7 +68,6 @@ export async function importOPML(file: File) {
         if (xmlUrl) {
             // It's a feed
             try {
-                // Check if exists
                 const existing = await db.feeds.where('url').equals(xmlUrl).first();
                 if (!existing) {
                     await db.feeds.add({
@@ -25,8 +77,20 @@ export async function importOPML(file: File) {
                         folderId: parentFolderId
                     });
                 }
+                processedItems++;
+                onProgress?.({
+                    current: processedItems,
+                    total: totalItems,
+                    currentFile: textAttr || 'Untitled'
+                });
             } catch (e) {
                 console.error('Failed to import feed', xmlUrl, e);
+                processedItems++;
+                onProgress?.({
+                    current: processedItems,
+                    total: totalItems,
+                    currentFile: textAttr || 'Untitled'
+                });
             }
         } else if (node.querySelectorAll('outline').length > 0) {
             // It's likely a folder
@@ -56,8 +120,25 @@ export async function importOPML(file: File) {
             await processOutline(node);
         }
     }
+
+    onProgress?.({
+        current: totalItems,
+        total: totalItems,
+        currentFile: 'Complete'
+    });
 }
 
+/**
+ * Exports feeds and folders to an OPML file.
+ *
+ * Generates an OPML XML document from the database and triggers a download.
+ * Organizes feeds by folder, with uncategorized feeds at the root level.
+ *
+ * @example
+ * ```ts
+ * exportOPML(); // Triggers browser download of vesper-subs.opml
+ * ```
+ */
 export async function exportOPML() {
     const feeds = await db.feeds.toArray();
     const folders = await db.folders.toArray();
@@ -72,10 +153,14 @@ export async function exportOPML() {
 
     // 1. Process Folders
     for (const folder of folders) {
-        opml += `\n    <outline text="${folder.name}" title="${folder.name}">`;
+        const folderName = escapeXml(folder.name);
+        opml += `\n    <outline text="${folderName}" title="${folderName}">`;
         const folderFeeds = feeds.filter(f => f.folderId === folder.id);
         for (const feed of folderFeeds) {
-             opml += `\n      <outline type="rss" text="${feed.title}" title="${feed.title}" xmlUrl="${feed.url}" htmlUrl="${feed.website}"/>`;
+            const title = escapeXml(feed.title || '');
+            const xmlUrl = escapeXml(feed.url || '');
+            const htmlUrl = escapeXml(feed.website || '');
+            opml += `\n      <outline type="rss" text="${title}" title="${title}" xmlUrl="${xmlUrl}" htmlUrl="${htmlUrl}"/>`;
         }
         opml += `\n    </outline>`;
     }
@@ -83,7 +168,10 @@ export async function exportOPML() {
     // 2. Process Uncategorized
     const uncategorized = feeds.filter(f => !f.folderId);
     for (const feed of uncategorized) {
-        opml += `\n    <outline type="rss" text="${feed.title}" title="${feed.title}" xmlUrl="${feed.url}" htmlUrl="${feed.website}"/>`;
+        const title = escapeXml(feed.title || '');
+        const xmlUrl = escapeXml(feed.url || '');
+        const htmlUrl = escapeXml(feed.website || '');
+        opml += `\n    <outline type="rss" text="${title}" title="${title}" xmlUrl="${xmlUrl}" htmlUrl="${htmlUrl}"/>`;
     }
 
     opml += `\n  </body>\n</opml>`;
@@ -95,4 +183,5 @@ export async function exportOPML() {
     a.href = url;
     a.download = 'vesper-subs.opml';
     a.click();
+    URL.revokeObjectURL(url);
 }

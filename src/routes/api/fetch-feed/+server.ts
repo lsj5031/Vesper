@@ -1,6 +1,8 @@
 import { error as httpError, isHttpError } from '@sveltejs/kit';
 import { XMLParser } from 'fast-xml-parser';
 import type { RequestHandler } from './$types';
+import { API_CONFIG, RSS_CONFIG } from '$lib/config';
+import { logger } from '$lib/logger';
 
 // Some feeds ship malformed XML (unclosed CDATA, `<link/>http...` fragments, etc.)
 // This lightly normalizes common cases so the parser can recover.
@@ -104,7 +106,7 @@ export const GET: RequestHandler = async ({ url }) => {
                 'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*;q=0.9',
                 ...(refresh ? { 'Cache-Control': 'no-cache' } : {})
             },
-            signal: AbortSignal.timeout(10000)
+            signal: AbortSignal.timeout(RSS_CONFIG.FETCH_TIMEOUT_MS)
         });
         
         if (!response.ok) {
@@ -115,9 +117,9 @@ export const GET: RequestHandler = async ({ url }) => {
         let feedData;
         try {
             feedData = normalizeFeed(text);
-        } catch (parseErr: any) {
-            console.error(`Parse error for ${feedUrl}:`, parseErr);
-            throw httpError(502, `Failed to parse feed: ${parseErr.message || parseErr}`);
+        } catch (parseErr: unknown) {
+            logger.error(`Parse error for ${feedUrl}`, parseErr, 'fetch-feed');
+            throw httpError(502, `Failed to parse feed: ${parseErr instanceof Error ? parseErr.message : 'Unknown error'}`);
         }
         
         const headers: Record<string, string> = {
@@ -126,7 +128,7 @@ export const GET: RequestHandler = async ({ url }) => {
         };
 
         if (!refresh) {
-            headers['Cache-Control'] = 'max-age=3600';
+            headers['Cache-Control'] = `max-age=${API_CONFIG.CACHE_MAX_AGE}`;
         } else {
             headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
         }
@@ -137,13 +139,13 @@ export const GET: RequestHandler = async ({ url }) => {
             throw err;
         }
 
-        const message = err?.message || String(err);
-        const name = err?.name;
+        const message = err instanceof Error ? err.message : String(err);
+        const name = err instanceof Error ? err.name : undefined;
 
-        console.error(`Failed to fetch feed ${feedUrl}:`, message);
+        logger.error(`Failed to fetch feed ${feedUrl}`, err, 'fetch-feed');
         
         if (name === 'AbortError' || name === 'TimeoutError') {
-            throw httpError(504, `Feed request timeout after 10 seconds`);
+            throw httpError(504, `Feed request timeout after ${RSS_CONFIG.FETCH_TIMEOUT_MS / 1000} seconds`);
         }
         
         throw httpError(502, `Failed to fetch feed: ${message}`);

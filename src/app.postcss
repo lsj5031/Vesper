@@ -80,6 +80,80 @@ body[data-theme='vesper-light'] {
   }
 }
 
+/* Vesper Button System - Consistent buttons across all components */
+
+/* Primary button - teal background, white text */
+.btn-vesper-primary {
+  @apply px-4 py-2 rounded text-sm font-semibold uppercase tracking-wide transition-all duration-200;
+  @apply border border-o3-teal bg-o3-teal text-white;
+  @apply hover:opacity-90 active:opacity-80;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Secondary button - teal border, transparent background */
+.btn-vesper-secondary {
+  @apply px-4 py-2 rounded text-sm font-semibold uppercase tracking-wide transition-all duration-200;
+  @apply border border-o3-teal text-o3-teal;
+  @apply hover:bg-o3-teal hover:text-white;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Ghost button - no border, subtle hover */
+.btn-vesper-ghost {
+  @apply px-3 py-2 rounded text-sm font-semibold uppercase tracking-wide transition-all duration-200;
+  @apply border border-transparent;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Dark mode ghost button */
+[data-theme='vesper'] .btn-vesper-ghost {
+  @apply text-o3-black-20 hover:text-o3-white hover:bg-white/5;
+}
+
+/* Light mode ghost button */
+[data-theme='vesper-light'] .btn-vesper-ghost {
+  @apply text-o3-black-80 hover:text-o3-black-90 hover:bg-black/5;
+}
+
+/* Text button - minimal styling */
+.btn-vesper-text {
+  @apply text-sm font-medium transition-colors duration-150;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Dark mode text button */
+[data-theme='vesper'] .btn-vesper-text {
+  @apply text-o3-black-40 hover:text-o3-teal;
+}
+
+/* Light mode text button */
+[data-theme='vesper-light'] .btn-vesper-text {
+  @apply text-o3-black-70 hover:text-o3-teal;
+}
+
+/* Small button variant */
+.btn-vesper-small {
+  @apply px-3 py-1.5 text-xs;
+}
+
+/* Icon button - square, for icon-only buttons */
+.btn-vesper-icon {
+  @apply p-2 rounded;
+  @apply flex items-center justify-center;
+  @apply transition-all duration-200;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Dark mode icon button */
+[data-theme='vesper'] .btn-vesper-icon {
+  @apply text-o3-black-20 hover:text-o3-white hover:bg-white/5;
+}
+
+/* Light mode icon button */
+[data-theme='vesper-light'] .btn-vesper-icon {
+  @apply text-o3-black-80 hover:text-o3-black-90 hover:bg-black/5;
+}
+
 /* Vesper Theme Tokens for Skeleton */
 :root [data-theme='vesper'] {
     --theme-font-family-heading: "Playfair Display", serif;
@@ -205,4 +279,143 @@ body[data-theme='vesper-light'] {
 .divider-h {
     border-bottom: 1px solid var(--o3-color-palette-black-30);
     width: 100%;
+}
+
+/* Fix O3 button icon colors to match Vesper theme */
+/* Override O3 button color variables for dark mode */
+[data-theme='vesper'] .o3-button.o3-button--secondary {
+  --_o3-button-secondary-standard-color: var(--o3-color-palette-black-20);
+  --_o3-button-secondary-standard-border: var(--o3-color-palette-black-40);
+  --_o3-button-secondary-standard-background: rgba(255, 255, 255, 0);
+  --_o3-button-secondary-standard-hover-color: var(--o3-color-palette-white);
+  --_o3-button-secondary-standard-hover-border: var(--o3-color-palette-black-30);
+  --_o3-button-secondary-standard-hover-background: rgba(255, 255, 255, 0.05);
+  --_o3-button-secondary-standard-focus-color: var(--o3-color-palette-white);
+  --_o3-button-secondary-standard-focus-border: var(--o3-color-palette-black-30);
+  --_o3-button-secondary-standard-focus-background: rgba(255, 255, 255, 0.05);
+  --_o3-button-secondary-standard-active-color: var(--o3-color-palette-white);
+  --_o3-button-secondary-standard-active-border: var(--o3-color-palette-black-30);
+  --_o3-button-secondary-standard-active-background: rgba(255, 255, 255, 0.1);
+  
+  --_o3-button-secondary-inverse-color: var(--o3-color-palette-black-20);
+  --_o3-button-secondary-inverse-border: var(--o3-color-palette-black-40);
+  --_o3-button-secondary-inverse-background: rgba(255, 255, 255, 0);
+  --_o3-button-secondary-inverse-hover-color: var(--o3-color-palette-white);
+  --_o3-button-secondary-inverse-hover-border: var(--o3-color-palette-black-30);
+  --_o3-button-secondary-inverse-hover-background: rgba(255, 255, 255, 0.05);
+  --_o3-button-secondary-inverse-focus-color: var(--o3-color-palette-white);
+  --_o3-button-secondary-inverse-focus-border: var(--o3-color-palette-black-30);
+  --_o3-button-secondary-inverse-focus-background: rgba(255, 255, 255, 0.05);
+  --_o3-button-secondary-inverse-active-color: var(--o3-color-palette-white);
+  --_o3-button-secondary-inverse-active-border: var(--o3-color-palette-black-30);
+  --_o3-button-secondary-inverse-active-background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='vesper'] .o3-button.o3-button--ghost {
+  --_o3-button-ghost-standard-color: var(--o3-color-palette-black-20);
+  --_o3-button-ghost-standard-border: rgba(255, 255, 255, 0);
+  --_o3-button-ghost-standard-background: rgba(255, 255, 255, 0);
+  --_o3-button-ghost-standard-hover-color: var(--o3-color-palette-white);
+  --_o3-button-ghost-standard-hover-border: rgba(255, 255, 255, 0);
+  --_o3-button-ghost-standard-hover-background: rgba(255, 255, 255, 0.05);
+  --_o3-button-ghost-standard-focus-color: var(--o3-color-palette-white);
+  --_o3-button-ghost-standard-focus-border: rgba(255, 255, 255, 0);
+  --_o3-button-ghost-standard-focus-background: rgba(255, 255, 255, 0.05);
+  --_o3-button-ghost-standard-active-color: var(--o3-color-palette-white);
+  --_o3-button-ghost-standard-active-border: rgba(255, 255, 255, 0);
+  --_o3-button-ghost-standard-active-background: rgba(255, 255, 255, 0.1);
+  
+  --_o3-button-ghost-inverse-color: var(--o3-color-palette-black-20);
+  --_o3-button-ghost-inverse-border: rgba(255, 255, 255, 0);
+  --_o3-button-ghost-inverse-background: rgba(255, 255, 255, 0);
+  --_o3-button-ghost-inverse-hover-color: var(--o3-color-palette-white);
+  --_o3-button-ghost-inverse-hover-border: rgba(255, 255, 255, 0);
+  --_o3-button-ghost-inverse-hover-background: rgba(255, 255, 255, 0.05);
+  --_o3-button-ghost-inverse-focus-color: var(--o3-color-palette-white);
+  --_o3-button-ghost-inverse-focus-border: rgba(255, 255, 255, 0);
+  --_o3-button-ghost-inverse-focus-background: rgba(255, 255, 255, 0.05);
+  --_o3-button-ghost-inverse-active-color: var(--o3-color-palette-white);
+  --_o3-button-ghost-inverse-active-border: rgba(255, 255, 255, 0);
+  --_o3-button-ghost-inverse-active-background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='vesper'] .o3-button.o3-button--primary {
+  --_o3-button-primary-standard-color: var(--o3-color-palette-white);
+  --_o3-button-primary-standard-hover-color: var(--o3-color-palette-white);
+  --_o3-button-primary-standard-focus-color: var(--o3-color-palette-white);
+  --_o3-button-primary-standard-active-color: var(--o3-color-palette-white);
+  
+  --_o3-button-primary-inverse-color: var(--o3-color-palette-white);
+  --_o3-button-primary-inverse-hover-color: var(--o3-color-palette-white);
+  --_o3-button-primary-inverse-focus-color: var(--o3-color-palette-white);
+  --_o3-button-primary-inverse-active-color: var(--o3-color-palette-white);
+}
+
+/* Override O3 button color variables for light mode */
+[data-theme='vesper-light'] .o3-button.o3-button--secondary {
+  --_o3-button-secondary-standard-color: var(--o3-color-palette-black-80);
+  --_o3-button-secondary-standard-border: var(--o3-color-palette-black-40);
+  --_o3-button-secondary-standard-background: rgba(0, 0, 0, 0);
+  --_o3-button-secondary-standard-hover-color: var(--o3-color-palette-black-90);
+  --_o3-button-secondary-standard-hover-border: var(--o3-color-palette-black-50);
+  --_o3-button-secondary-standard-hover-background: rgba(0, 0, 0, 0.03);
+  --_o3-button-secondary-standard-focus-color: var(--o3-color-palette-black-90);
+  --_o3-button-secondary-standard-focus-border: var(--o3-color-palette-black-50);
+  --_o3-button-secondary-standard-focus-background: rgba(0, 0, 0, 0.03);
+  --_o3-button-secondary-standard-active-color: var(--o3-color-palette-black-90);
+  --_o3-button-secondary-standard-active-border: var(--o3-color-palette-black-50);
+  --_o3-button-secondary-standard-active-background: rgba(0, 0, 0, 0.06);
+  
+  --_o3-button-secondary-inverse-color: var(--o3-color-palette-black-80);
+  --_o3-button-secondary-inverse-border: var(--o3-color-palette-black-40);
+  --_o3-button-secondary-inverse-background: rgba(0, 0, 0, 0);
+  --_o3-button-secondary-inverse-hover-color: var(--o3-color-palette-black-90);
+  --_o3-button-secondary-inverse-hover-border: var(--o3-color-palette-black-50);
+  --_o3-button-secondary-inverse-hover-background: rgba(0, 0, 0, 0.03);
+  --_o3-button-secondary-inverse-focus-color: var(--o3-color-palette-black-90);
+  --_o3-button-secondary-inverse-focus-border: var(--o3-color-palette-black-50);
+  --_o3-button-secondary-inverse-focus-background: rgba(0, 0, 0, 0.03);
+  --_o3-button-secondary-inverse-active-color: var(--o3-color-palette-black-90);
+  --_o3-button-secondary-inverse-active-border: var(--o3-color-palette-black-50);
+  --_o3-button-secondary-inverse-active-background: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme='vesper-light'] .o3-button.o3-button--ghost {
+  --_o3-button-ghost-standard-color: var(--o3-color-palette-black-80);
+  --_o3-button-ghost-standard-border: rgba(0, 0, 0, 0);
+  --_o3-button-ghost-standard-background: rgba(0, 0, 0, 0);
+  --_o3-button-ghost-standard-hover-color: var(--o3-color-palette-black-90);
+  --_o3-button-ghost-standard-hover-border: rgba(0, 0, 0, 0);
+  --_o3-button-ghost-standard-hover-background: rgba(0, 0, 0, 0.03);
+  --_o3-button-ghost-standard-focus-color: var(--o3-color-palette-black-90);
+  --_o3-button-ghost-standard-focus-border: rgba(0, 0, 0, 0);
+  --_o3-button-ghost-standard-focus-background: rgba(0, 0, 0, 0.03);
+  --_o3-button-ghost-standard-active-color: var(--o3-color-palette-black-90);
+  --_o3-button-ghost-standard-active-border: rgba(0, 0, 0, 0);
+  --_o3-button-ghost-standard-active-background: rgba(0, 0, 0, 0.06);
+  
+  --_o3-button-ghost-inverse-color: var(--o3-color-palette-black-80);
+  --_o3-button-ghost-inverse-border: rgba(0, 0, 0, 0);
+  --_o3-button-ghost-inverse-background: rgba(0, 0, 0, 0);
+  --_o3-button-ghost-inverse-hover-color: var(--o3-color-palette-black-90);
+  --_o3-button-ghost-inverse-hover-border: rgba(0, 0, 0, 0);
+  --_o3-button-ghost-inverse-hover-background: rgba(0, 0, 0, 0.03);
+  --_o3-button-ghost-inverse-focus-color: var(--o3-color-palette-black-90);
+  --_o3-button-ghost-inverse-focus-border: rgba(0, 0, 0, 0);
+  --_o3-button-ghost-inverse-focus-background: rgba(0, 0, 0, 0.03);
+  --_o3-button-ghost-inverse-active-color: var(--o3-color-palette-black-90);
+  --_o3-button-ghost-inverse-active-border: rgba(0, 0, 0, 0);
+  --_o3-button-ghost-inverse-active-background: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme='vesper-light'] .o3-button.o3-button--primary {
+  --_o3-button-primary-standard-color: var(--o3-color-palette-black-90);
+  --_o3-button-primary-standard-hover-color: var(--o3-color-palette-black-90);
+  --_o3-button-primary-standard-focus-color: var(--o3-color-palette-black-90);
+  --_o3-button-primary-standard-active-color: var(--o3-color-palette-black-90);
+  
+  --_o3-button-primary-inverse-color: var(--o3-color-palette-black-90);
+  --_o3-button-primary-inverse-hover-color: var(--o3-color-palette-black-90);
+  --_o3-button-primary-inverse-focus-color: var(--o3-color-palette-black-90);
+  --_o3-button-primary-inverse-active-color: var(--o3-color-palette-black-90);
 }

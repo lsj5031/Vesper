@@ -34,9 +34,11 @@ export interface Folder {
     collapsed?: 0 | 1;
 }
 
+type SettingValue = string | number | boolean | null | object;
+
 export interface Settings {
     key: string;
-    value: any;
+    value: SettingValue;
 }
 
 class ReaderDB extends Dexie {
@@ -72,14 +74,36 @@ class ReaderDB extends Dexie {
 
 export const db = new ReaderDB();
 
-// Helper to get setting
-export async function getSetting(key: string, defaultValue: any = null) {
+/**
+ * Retrieves a setting value from the database.
+ *
+ * @param key - The setting key to retrieve
+ * @param defaultValue - Default value to return if setting doesn't exist
+ * @returns The setting value, or defaultValue if not found
+ *
+ * @example
+ * ```ts
+ * const fontSize = await getSetting('fontSize', 16);
+ * ```
+ */
+export async function getSetting<T extends SettingValue>(key: string, defaultValue?: T): Promise<T | undefined> {
     const s = await db.settings.get(key);
-    return s ? s.value : defaultValue;
+    return (s ? s.value : defaultValue) as T | undefined;
 }
 
-// Helper to set setting
-export async function setSetting(key: string, value: any) {
+/**
+ * Stores a setting value in the database.
+ *
+ * @param key - The setting key to store
+ * @param value - The value to store (will be JSON serialized)
+ *
+ * @example
+ * ```ts
+ * await setSetting('fontSize', 18);
+ * await setSetting('theme', 'dark');
+ * ```
+ */
+export async function setSetting(key: string, value: SettingValue): Promise<void> {
     await db.settings.put({ key, value });
 }
 

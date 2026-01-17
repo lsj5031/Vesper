@@ -17,12 +17,23 @@ const STOP_WORDS = new Set([
 ]);
 
 /**
- * Breaks text into an array of unique, indexed keywords.
+ * Breaks text into an array of unique, indexed keywords for search.
+ *
+ * Processing steps:
  * 1. Converts to lowercase
  * 2. Removes HTML tags
- * 3. Removes punctuation
- * 4. Filters out stop words
+ * 3. Removes punctuation (keeps alphanumeric)
+ * 4. Filters out stop words and short words
  * 5. Returns unique set
+ *
+ * @param text - The text to tokenize
+ * @returns Array of unique search tokens
+ *
+ * @example
+ * ```ts
+ * tokenize("Hello World!") // ["hello", "world"]
+ * tokenize("<p>Hello <b>world</b></p>") // ["hello", "world"]
+ * ```
  */
 export function tokenize(text: string): string[] {
     if (!text) return [];

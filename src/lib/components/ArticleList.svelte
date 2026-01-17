@@ -6,6 +6,7 @@
     import { refreshAllFeeds, syncFeed } from '../rss';
     import { formatDistanceToNow } from 'date-fns';
     import { tokenize } from '../search';
+    import { logger } from '../logger';
     
     let filterStatus: 'all' | 'unread' = 'all';
     let selectedIds = new Set<number>();
@@ -23,8 +24,7 @@
     const feedsStore = liveQuery(() => db.feeds.toArray());
     let feedTitleMap: Record<number, string> = {};
     
-    const MAX_RESULTS = 300;
-    // TODO: paginate and/or add a compound index (e.g., [feedId+isoDate]) so larger result sets can stay ordered without client-side scans.
+    import { ARTICLE_CONFIG } from '../config';
 
     $: {
         const fid = $selectedFeedId;
@@ -42,11 +42,11 @@
                 // or just the first one. Let's use the first one for prefix matching support.
                 const firstToken = searchTokens[0];
                 
-                // Get candidates from DB using index (cap to avoid large in-memory scans)
-                let candidateIds = await db.articles
-                    .where('words').startsWith(firstToken)
-                    .limit(MAX_RESULTS * 2) // allow some headroom before secondary filtering
-                    .primaryKeys();
+                    // Get candidates from DB using index (cap to avoid large in-memory scans)
+                    let candidateIds = await db.articles
+                        .where('words').startsWith(firstToken)
+                        .limit(ARTICLE_CONFIG.MAX_RESULTS * 2) // allow some headroom before secondary filtering
+                        .primaryKeys();
                 
                 // If we have multiple tokens, we must intersect in memory (or multiple queries)
                 // For "apple banana", we got IDs for "apple*". Now filter those candidates.
@@ -72,7 +72,7 @@
                     results = results.filter(a => a.read === 0);
                 }
 
-                return results.slice(0, MAX_RESULTS);
+                return results.slice(0, ARTICLE_CONFIG.MAX_RESULTS);
             }
 
             // 2. Standard Navigation (No Search)
@@ -88,21 +88,21 @@
             let results: Article[] = [];
             
             if (fid === 'all') {
-                 // When filtering unread in All view, query unread directly so we don't drop older unread items when the latest 200 are already read.
-                 if (status === 'unread') {
+                  // When filtering unread in All view, query unread directly so we don't drop older unread items when the latest 200 are already read.
+                  if (status === 'unread') {
                     results = await db.articles
                         .orderBy('isoDate')
                         .reverse()
                         .filter(a => a.read === 0)
-                        .limit(MAX_RESULTS)
+                        .limit(ARTICLE_CONFIG.MAX_RESULTS)
                         .toArray();
-                 } else {
-                    results = await (collection as any).limit(MAX_RESULTS).toArray();
-                 }
+                  } else {
+                    results = await (collection as any).limit(ARTICLE_CONFIG.MAX_RESULTS).toArray();
+                  }
             } else if (fid === 'starred') {
-                 results = await (collection as any).limit(MAX_RESULTS).toArray();
+                  results = await (collection as any).limit(ARTICLE_CONFIG.MAX_RESULTS).toArray();
             } else if (typeof fid === 'number') {
-                 results = await (collection as any).limit(MAX_RESULTS).toArray();
+                  results = await (collection as any).limit(ARTICLE_CONFIG.MAX_RESULTS).toArray();
             }
 
             // Apply memory filter for read/unread if needed
@@ -111,7 +111,7 @@
             }
 
             // Cap all result sets to avoid heavy rerenders
-            return results.slice(0, MAX_RESULTS);
+            return results.slice(0, ARTICLE_CONFIG.MAX_RESULTS);
         });
     }
 
@@ -164,7 +164,7 @@
         try {
             await syncFeed(currentFeed, 50, true);
         } catch (e) {
-            console.error('Retry failed', e);
+            logger.error('Retry failed', e, 'ArticleList');
         }
     }
 
@@ -299,18 +299,19 @@
                  if (newIndex < 0) newIndex = 0;
              }
 
-             if (newIndex >= 0 && newIndex < articles.length) {
-                 const newArticleId = articles[newIndex].id;
-                 if (newArticleId !== undefined) {
-                     $selectedArticleId = newArticleId;
-                     
-                     // Scroll into view
-                     const element = document.getElementById('article-list-item-' + newArticleId);
-                     if (element) {
-                         element.scrollIntoView({ block: 'nearest' });
-                     }
-                 }
-             }
+              if (newIndex >= 0 && newIndex < articles.length) {
+                  const newArticleId = articles[newIndex].id;
+                  if (newArticleId !== undefined) {
+                      $selectedArticleId = newArticleId;
+
+                      // Scroll into view with smart positioning
+                      const element = document.getElementById('article-list-item-' + newArticleId);
+                      if (element) {
+                          const scrollBlock = e.key === 'j' ? 'start' : 'end';
+                          element.scrollIntoView({ block: scrollBlock, behavior: 'smooth' });
+                      }
+                  }
+              }
          }
      }
 
@@ -550,7 +551,7 @@
     <div class="flex-1 overflow-y-auto min-h-0 relative">
         {#if $articlesStore}
             {#each $articlesStore as article (article.id)}
-                <div 
+                <div
                     id={'article-list-item-' + article.id}
                     class="relative w-full flex items-stretch border-b border-o3-black-30 group transition-colors"
                     class:bg-o3-black-80={$selectedArticleId === article.id && $themeMode === 'dark'}

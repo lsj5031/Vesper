@@ -1,0 +1,37 @@
+{
+	"useSortOrder": {
+		"order": [
+			"$svelte-specific",
+			"$svelte-reactive",
+			"$props",
+			"$state",
+			"typescript",
+			"lib",
+			"$lib",
+			"$components"
+		]
+	},
+	"svelteSortOrder": "options-scripts-markup-styles",
+	"svelteAllowShorthand": true,
+	"svelteAllowShorthandEventOptions": true,
+	"svelteIndentScriptAndStyle": false,
+	"plugins": ["prettier-plugin-svelte"],
+	"overrides": [
+		{
+			"files": "*.svelte",
+			"options": {
+				"parser": "svelte"
+			}
+		}
+	],
+	"printWidth": 100,
+	"tabWidth": 4,
+	"useTabs": false,
+	"semi": true,
+	"singleQuote": false,
+	"quoteProps": "as-needed",
+	"trailingComma": "es5",
+	"bracketSpacing": true,
+	"arrowParens": "always",
+	"endOfLine": "lf"
+}

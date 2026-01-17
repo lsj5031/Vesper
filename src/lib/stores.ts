@@ -29,4 +29,4 @@ export const userSettings = localStorageStore('vesper-settings', {
 });
 
 // Theme (day/night)
-export const themeMode = localStorageStore<'dark' | 'light'>('vesper-theme-mode', 'dark');
+export const themeMode = localStorageStore<'dark' | 'light'>('vesper-theme-mode', 'light');

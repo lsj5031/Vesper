@@ -4,6 +4,7 @@
     import { db, type Feed } from '../db';
     import { selectedFeedId, selectedArticleId, searchQuery, refreshProgress, userSettings, showSettings, themeMode } from '../stores';
     import { refreshAllFeeds, syncFeed } from '../rss';
+    import { logger } from '../logger';
     
     // Live Queries
     const folders = liveQuery(() => db.folders.toArray());
@@ -40,9 +41,9 @@
         refreshingFeeds = refreshingFeeds; // Trigger reactivity
         
         try {
-            await syncFeed(feed, 50, true); // forceRefresh = true
+            await syncFeed(feed, 50, true);
         } catch (err) {
-            console.error('Feed refresh failed', err);
+            logger.error('Feed refresh failed', err, 'Sidebar');
         } finally {
             refreshingFeeds.delete(feed.id);
             refreshingFeeds = refreshingFeeds;

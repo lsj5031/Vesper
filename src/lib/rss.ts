@@ -2,9 +2,10 @@ import DOMPurify from 'dompurify';
 import { db, type Feed, type Article } from './db';
 import { tokenize } from './search';
 import { refreshProgress } from './stores';
+import { logger } from './logger';
 
+import { RSS_CONFIG, ARTICLE_CONFIG } from './config';
 const FEED_PROXY_BASE = (import.meta.env.VITE_FEED_PROXY_BASE || '').trim();
-const REFRESH_ALL_MIN_INTERVAL_MS = 3 * 60 * 1000;
 const inFlightFeedRequests = new Map<string, Promise<any>>();
 const feedFailureState = new Map<string, { count: number; nextAllowed: number }>();
 let lastRefreshAllAt = 0;
@@ -114,7 +115,7 @@ function looksLikeHtml(text: string, contentType: string | null): boolean {
 
 export async function fetchFeed(
     url: string,
-    maxRetries = 2,
+    maxRetries = RSS_CONFIG.MAX_FETCH_RETRIES,
     forceRefresh = false
 ) {
     const cacheKey = normalizeFeedUrl(url);
@@ -133,6 +134,12 @@ export async function fetchFeed(
 
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
                 const proxyUrls = buildProxyUrls(candidate, forceRefresh);
+
+                if (proxyUrls.length === 0) {
+                    candidateError = new Error('No feed proxy configured (VITE_FEED_PROXY_BASE or same-origin /api/fetch-feed)');
+                    lastError = candidateError;
+                    break;
+                }
 
                 try {
                     for (const proxyUrl of proxyUrls) {
@@ -161,7 +168,7 @@ export async function fetchFeed(
 
                 const isRetryable = candidateError instanceof TypeError || (candidateError as any)?.message?.includes('HTTP');
                 if (attempt < maxRetries && isRetryable) {
-                    await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1))); // Exponential backoff
+                    await new Promise(resolve => setTimeout(resolve, RSS_CONFIG.BACKOFF_BASE_MS * (attempt + 1))); // Exponential backoff
                     continue;
                 }
                 break;
@@ -170,7 +177,7 @@ export async function fetchFeed(
             if (!candidateError) break;
         }
         
-        console.error(`Failed to fetch ${url} after ${maxRetries + 1} attempts`, lastError);
+        logger.error(`Failed to fetch ${url} after ${maxRetries + 1} attempts`, lastError, 'rss');
         throw lastError;
     })();
 
@@ -184,7 +191,7 @@ export async function fetchFeed(
     }
 }
 
-export async function syncFeed(feed: Feed, unreadLimit = 50, forceRefresh = false) {
+export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_LIMIT, forceRefresh = false) {
     try {
         const data = await fetchFeed(feed.url, 2, forceRefresh);
         
@@ -205,13 +212,17 @@ export async function syncFeed(feed: Feed, unreadLimit = 50, forceRefresh = fals
                 (candidate): candidate is string => typeof candidate === 'string' && candidate.trim() !== ''
             );
             
+            // Stable fallback GUID: derive from link, title+date to avoid duplicates on each sync
+            const stableFallbackGuid = resolvedLink ||
+                `${(item.title ?? '').trim()}|${item.isoDate ?? ''}|${feed.id ?? ''}`;
+
             return {
                 feedId: feed.id!,
-                guid: guidCandidate || Math.random().toString(),
+                guid: guidCandidate || stableFallbackGuid,
                 title: item.title || 'Untitled',
                 link: resolvedLink,
                 content: cleanContent,
-                snippet: cleanContent.replace(/<[^>]*>?/gm, '').substring(0, 150) + '...',
+                snippet: cleanContent.replace(/<[^>]*>?/gm, '').substring(0, ARTICLE_CONFIG.SNIPPET_LENGTH) + '...',
                 author: item.creator || item['dc:creator'],
                 isoDate: item.isoDate || new Date().toISOString(),
                 receivedDate: Date.now(),
@@ -364,14 +375,13 @@ export async function addNewFeed(url: string, folderId?: number) {
 
 export async function refreshAllFeeds(force = false) {
     const now = Date.now();
-    if (!force && now - lastRefreshAllAt < REFRESH_ALL_MIN_INTERVAL_MS) {
-        console.info('Skipping refreshAllFeeds: throttled');
+    if (!force && now - lastRefreshAllAt < RSS_CONFIG.REFRESH_ALL_MIN_INTERVAL_MS) {
+        logger.info('Skipping refreshAllFeeds: throttled', 'rss');
         return [];
     }
 
     lastRefreshAllAt = now;
     const feeds = await db.feeds.toArray();
-    const concurrency = 3;
     const results: PromiseSettledResult<{ unread: number; archived: number; total: number }>[] = [];
     
     try {
@@ -401,7 +411,7 @@ export async function refreshAllFeeds(force = false) {
                 } catch (err) {
                     const prevCount = failure?.count ?? 0;
                     const count = prevCount + 1;
-                    const backoffMs = Math.min(15 * 60 * 1000, 30_000 * Math.pow(2, count - 1));
+                    const backoffMs = Math.min(RSS_CONFIG.MAX_BACKOFF_MS, RSS_CONFIG.BACKOFF_BASE_MS * 60 * Math.pow(2, count - 1));
                     feedFailureState.set(key, { count, nextAllowed: Date.now() + backoffMs });
                     results.push({ status: 'rejected', reason: err });
                 }
@@ -412,7 +422,7 @@ export async function refreshAllFeeds(force = false) {
         };
         
         // Start concurrency workers
-        const workers = Array(Math.min(concurrency, feeds.length))
+        const workers = Array(Math.min(RSS_CONFIG.CONCURRENCY, feeds.length))
             .fill(null)
             .map(() => worker());
         

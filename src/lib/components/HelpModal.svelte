@@ -77,9 +77,8 @@
         </div>
 
         <div class="mt-6 text-center">
-            <button 
-                class="text-sm hover:text-o3-teal transition"
-                style={`color:${isDark ? 'var(--o3-color-palette-black-40)' : 'var(--o3-color-palette-black-70)'}`}
+            <button
+                class="btn-vesper-text"
                 on:click={close}
             >
                 Close

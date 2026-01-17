@@ -133,14 +133,12 @@
                             on:keydown={(e) => e.key === 'Enter' && handleAddFeed()}
                             disabled={isAdding || isImporting}
                         />
-                        <button 
-                            class="px-4 py-2 rounded text-sm font-semibold uppercase tracking-wide transition-colors border border-o3-teal text-o3-teal hover:bg-o3-teal hover:text-o3-black-90"
-                            style={isDark ? 'border-opacity: 0.6; background: rgba(17, 153, 142, 0.1)' : 'border-opacity: 0.4; background: rgba(17, 153, 142, 0.05)'}
+                        <button
+                            class="btn-vesper-secondary"
                             on:click={handleAddFeed}
                             disabled={!newFeedUrl.trim() || isAdding || isImporting}
                         >
-                            {isAdding ? 'Adding…' : 'Add'
-                            }
+                            {isAdding ? 'Adding…' : 'Add'}
                         </button>
                     </div>
                 </div>
@@ -158,9 +156,8 @@
                 <!-- Import OPML -->
                 <div class="space-y-3">
                     <h3 class="text-sm font-bold uppercase tracking-wider" style={`color:${isDark ? 'var(--o3-color-palette-teal)' : 'var(--o3-color-palette-teal)'}`}>Import from OPML</h3>
-                    <button 
-                        class="w-full px-4 py-3 rounded text-sm font-semibold uppercase tracking-wide transition-colors border border-o3-teal text-o3-teal hover:bg-o3-teal hover:text-o3-black-90"
-                        style={isDark ? 'border-opacity: 0.6; background: rgba(17, 153, 142, 0.1)' : 'border-opacity: 0.4; background: rgba(17, 153, 142, 0.05)'}
+                    <button
+                        class="btn-vesper-secondary w-full py-3"
                         on:click={() => document.getElementById('onboarding-opml-input')?.click()}
                         disabled={isAdding || isImporting}
                     >
@@ -171,9 +168,8 @@
             </div>
 
             <div class="mt-8 text-center">
-                <button 
-                    class="text-sm hover:text-o3-teal transition"
-                    style={`color:${isDark ? 'var(--o3-color-palette-black-40)' : 'var(--o3-color-palette-black-70)'}`}
+                <button
+                    class="btn-vesper-text"
                     on:click={close}
                 >
                     Skip for now
