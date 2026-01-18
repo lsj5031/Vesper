@@ -56,18 +56,18 @@ jobs:
             - name: Build production bundle
               run: npm run build
 
-            - name: Start preview server (Linux/Mac)
+            - name: Start static file server (Linux/Mac)
               if: matrix.os != 'windows-latest'
               run: |
-                  npm run preview &
-                  sleep 10
+                  npx serve@latest .svelte-kit/output/client -l 4173 &
+                  sleep 5
 
-            - name: Start preview server (Windows)
+            - name: Start static file server (Windows)
               if: matrix.os == 'windows-latest'
               shell: pwsh
               run: |
-                  $job = Start-Process -FilePath "node" -ArgumentList ".svelte-kit/output/server/index.js" -PassThru -RedirectStandardOutput "out.txt" -RedirectStandardError "err.txt"
-                  Start-Sleep -Seconds 10
+                  $process = Start-Process -FilePath "npx" -ArgumentList "serve@latest .svelte-kit/output/client -l 4173" -PassThru -RedirectStandardOutput "out.txt" -RedirectStandardError "err.txt"
+                  Start-Sleep -Seconds 5
 
             - name: Setup Pake CLI
               run: npm install -g pake-cli
@@ -79,11 +79,11 @@ jobs:
                     --name "Vesper RSS" \
                     --icon ${{ matrix.icon_path }}
 
-            - name: Build desktop app (Windows)
+            - name: Build desktop app (Windows - portable EXE)
               if: matrix.os == 'windows-latest'
               shell: pwsh
               run: |
-                  pake http://localhost:4173 --name "Vesper RSS" --icon ${{ matrix.icon_path }}
+                  pake http://localhost:4173 --name "Vesper RSS" --icon ${{ matrix.icon_path }} --targets exe
 
             - name: List build outputs
               shell: bash
@@ -148,7 +148,7 @@ jobs:
 
                       ### Installation
                       - **macOS**: Download `.dmg` and drag to Applications
-                      - **Windows**: Download `.msi` and run installer
+                      - **Windows**: Download `.exe` (portable, no installation needed)
                       - **Linux**: Download `.deb` and install with `sudo dpkg -i vesper-rss*.deb`
 
                       ### Direct Fetch Mode
