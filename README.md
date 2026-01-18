@@ -49,21 +49,27 @@ An elegant, sophisticated, completely offline-first RSS reader that looks and fe
 
 Vesper can be packaged as a native desktop application using [Pake](https://github.com/tw93/Pake), turning it into a lightweight (~5MB) offline-capable app for macOS, Windows, and Linux.
 
-### Downloads
+### Build Your Own Desktop App
 
-Pre-built desktop packages are available on the [Releases](https://github.com/lsj5031/vesper/releases) page.
+**Note:** Automated GitHub Actions builds are currently experimental. Manual local builds are recommended.
 
-### Build Your Own
+#### Prerequisites
 
-You can build a desktop app locally using Pake CLI:
+Install Pake CLI:
 
-1. **Install Pake CLI:**
+```bash
+npm install -g pake-cli
+```
 
-    ```bash
-    npm install -g pake-cli
-    ```
+**Platform-specific requirements:**
 
-2. **Build and preview Vesper:**
+- **Linux**: `sudo apt-get install libwebkit2gtk-4.1-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev`
+- **macOS**: Xcode Command Line Tools (already installed if you have `git`)
+- **Windows**: Visual Studio Build Tools (already installed if you have Node.js)
+
+#### Build Steps
+
+1. **Build and preview Vesper:**
 
     ```bash
     npm run build
@@ -71,7 +77,7 @@ You can build a desktop app locally using Pake CLI:
     # Runs on http://localhost:4173
     ```
 
-3. **Package with Pake (in a new terminal):**
+2. **Package with Pake (in a new terminal):**
 
     ```bash
     pake http://localhost:4173 \
@@ -81,8 +87,12 @@ You can build a desktop app locally using Pake CLI:
       --height 900
     ```
 
-4. **Install the generated app:**
-    - **macOS**: Open the `.dmg` file
+    **Icon formats:**
+    - Linux/Mac: Use `./static/icon-512.png` (512x512px PNG required)
+    - Windows: Use `./static/vesper.ico` (Windows ICO format)
+
+3. **Install the generated app:**
+    - **macOS**: Open the `.dmg` file and drag to Applications
     - **Windows**: Run the `.msi` installer
     - **Linux**: Install with `sudo dpkg -i Vesper-RSS_x86_64.deb`
 
@@ -91,20 +101,27 @@ You can build a desktop app locally using Pake CLI:
 For desktop apps (without the server-side proxy):
 
 1. Open Vesper
-2. Go to **Settings**
+2. Go to **Settings** (gear icon)
 3. Enable **Direct Fetch Mode**
 4. **Important:** Some feeds may fail due to CORS policy. If feeds don't load, disable Direct Fetch Mode and consider using a CORS proxy.
 
-### Automated Releases
+**How Direct Fetch Mode works:**
 
-Pushing a version tag triggers automatic desktop app builds via GitHub Actions:
+- ✅ **Works with**: CORS-friendly feeds (personal blogs, GitHub Pages, Medium)
+- ⚠️ **May fail**: Major news sites, commercial feeds (CORS restrictions)
+- 💡 **Tip**: If feeds don't load, try adding different feeds or disable Direct Fetch Mode
+
+### Automated Releases (Experimental)
+
+GitHub Actions workflow exists but requires system dependencies. Manual builds are currently more reliable:
 
 ```bash
+# Trigger experimental automated build
 git tag v1.0.0
 git push origin v1.0.0
 ```
 
-This builds and releases desktop packages for all three platforms.
+**Status:** Automated builds are experimental due to Pake's native dependencies. Use manual builds for reliable results.
 
 ## Development
 
