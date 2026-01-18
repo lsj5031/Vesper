@@ -3,6 +3,8 @@
     import { db } from '../db';
     import { selectedArticleId, themeMode, activePane } from '../stores';
     import { format } from 'date-fns';
+    import { fly } from 'svelte/transition';
+    import { quintOut } from 'svelte/easing';
 
     // READ-ONLY query - just fetch the article
     $: articleStore = liveQuery(async () => {
@@ -124,7 +126,15 @@
     aria-label="Article Content"
 >
     {#if $articleStore}
-        <article class="w-full px-8 py-12 border" class:bg-o3-black-80={$themeMode === 'dark'} class:bg-o3-paper={$themeMode !== 'dark'} class:border-o3-black-30={$themeMode === 'dark'} class:border-o3-black-10={$themeMode !== 'dark'}>
+        {#key $articleStore.id}
+            <article 
+                in:fly={{ y: 15, duration: 400, delay: 100, easing: quintOut }} 
+                class="w-full px-8 py-12 border" 
+                class:bg-o3-black-80={$themeMode === 'dark'} 
+                class:bg-o3-paper={$themeMode !== 'dark'} 
+                class:border-o3-black-30={$themeMode === 'dark'} 
+                class:border-o3-black-10={$themeMode !== 'dark'}
+            >
             <!-- Header -->
             <header class="mb-10 pb-8 border-b" class:border-o3-black-30={$themeMode === 'dark'} class:border-o3-black-20={$themeMode !== 'dark'}>
                 <div class="flex justify-between items-start mb-6">
@@ -133,9 +143,9 @@
                     </span>
                     <button on:click={() => toggleStar($articleStore)}>
                         {#if $articleStore.starred}
-                            <span class="text-o3-claret text-2xl">★</span>
+                            <span class="text-o3-claret text-2xl inline-block transition-transform active:scale-125">★</span>
                         {:else}
-                            <span class="text-2xl transition-colors" class:text-o3-white-60={$themeMode === 'dark'} class:text-o3-black-50={$themeMode !== 'dark'} class:hover:text-o3-white={$themeMode === 'dark'} class:hover:text-o3-black-90={$themeMode !== 'dark'}>☆</span>
+                            <span class="text-2xl transition-colors inline-block transition-transform active:scale-125" class:text-o3-white-60={$themeMode === 'dark'} class:text-o3-black-50={$themeMode !== 'dark'} class:hover:text-o3-white={$themeMode === 'dark'} class:hover:text-o3-black-90={$themeMode !== 'dark'}>☆</span>
                         {/if}
                     </button>
                 </div>
@@ -168,7 +178,9 @@
             <footer class="mt-20 pt-10 text-center border-t" class:border-o3-black-30={$themeMode === 'dark'} class:border-o3-black-20={$themeMode !== 'dark'} class:text-o3-black-40={$themeMode === 'dark'} class:text-o3-black-70={$themeMode !== 'dark'}>
                  <p class="italic font-headline">End of Article</p>
             </footer>
+
         </article>
+        {/key}
 
         <!-- Scroll to Top Button -->
         <button

@@ -1,5 +1,7 @@
 <script lang="ts">
     import { showHelp, themeMode } from '../stores';
+    import { fade, scale } from 'svelte/transition';
+    import { quintOut } from 'svelte/easing';
 
     function close() {
         $showHelp = false;
@@ -9,7 +11,11 @@
     $: isDark = $themeMode === 'dark';
 </script>
 
-<div class="fixed inset-0 z-50 flex items-center justify-center" style={`background:${isDark ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)'}`}>
+<div 
+    class="fixed inset-0 z-50 flex items-center justify-center" 
+    style={`background:${isDark ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)'}`}
+    transition:fade={{ duration: 200 }}
+>
     <button
         class="fixed inset-0"
         on:click={close}
@@ -22,6 +28,7 @@
         aria-modal="true"
         aria-labelledby="help-title"
         style={`background:var(--vesper-panel)`}
+        in:scale={{ start: 0.95, duration: 300, easing: quintOut }}
     >
         <div class="mb-6">
             <h2 id="help-title" class="text-2xl font-headline font-bold mb-2" style={`color:${isDark ? 'var(--o3-color-palette-white)' : 'var(--o3-color-palette-black-90)'}`}>Keyboard Shortcuts</h2>

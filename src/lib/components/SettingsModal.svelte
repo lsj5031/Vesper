@@ -1,5 +1,7 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
+    import { fade, scale } from 'svelte/transition';
+    import { quintOut } from 'svelte/easing';
     import Dexie from 'dexie';
     import { showSettings, themeMode } from '../stores';
     import { importOPML, exportOPML } from '../opml';
@@ -107,7 +109,11 @@
      }
 </script>
 
-<div class="fixed inset-0 z-50 flex items-center justify-center" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-paper)'}`}>
+<div 
+    class="fixed inset-0 z-50 flex items-center justify-center" 
+    style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-paper)'}`}
+    transition:fade={{ duration: 200 }}
+>
     <button 
         class="fixed inset-0 cursor-default"
         on:click={close}
@@ -119,6 +125,7 @@
         role="dialog"
         aria-modal="true"
         style={`background:var(--vesper-panel)`}
+        in:scale={{ start: 0.95, duration: 300, easing: quintOut }}
     >
         <div class="mb-6">
             <h2 class="text-2xl font-headline font-bold mb-2" style={`color:${isDark ? 'var(--o3-color-palette-white)' : 'var(--o3-color-palette-black-90)'}`}>Settings & Data</h2>

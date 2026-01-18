@@ -158,7 +158,7 @@
                     class="flex-1 o3-button o3-button--small relative overflow-hidden !bg-o3-black-80 !text-o3-paper !border-none cursor-default"
                     disabled
                 >
-                    <div class="absolute inset-0 bg-o3-teal opacity-30" style="width: {($refreshProgress.completed / $refreshProgress.total) * 100}%"></div>
+                    <div class="absolute inset-0 bg-o3-teal opacity-30 transition-all duration-500 ease-out" style="width: {($refreshProgress.completed / $refreshProgress.total) * 100}%"></div>
                     <span class="relative z-10">Updating {$refreshProgress.completed}/{$refreshProgress.total}</span>
                 </button>
             {:else}
@@ -226,7 +226,7 @@
                     {@const activeBg = $themeMode === 'dark' ? 'bg-o3-black-80' : 'bg-o3-black-10'}
                     {@const hoverBg = $themeMode === 'dark' ? 'hover:bg-o3-black-80/30' : 'hover:bg-o3-black-10'}
                     {@const loadingBg = $themeMode === 'dark' ? 'bg-o3-black-80/50' : 'bg-o3-black-5'}
-                    <div class={`group flex items-center w-full ${$selectedFeedId === feed.id ? (activeBg + ' border-l-2 ' + (feed.error ? 'border-o3-claret' : 'border-o3-teal')) : feed.error ? (activeBg + ' border-l-2 border-o3-claret') : isUpdating ? loadingBg : hoverBg}`}>
+                    <div class="group flex items-center w-full transition-all duration-200 ease-out {$selectedFeedId === feed.id ? (activeBg + ' border-l-2 ' + (feed.error ? 'border-o3-claret' : 'border-o3-teal')) : feed.error ? (activeBg + ' border-l-2 border-o3-claret') : isUpdating ? loadingBg : hoverBg} hover:translate-x-1">
                         <button 
                             class={`flex-1 text-left px-3 py-1.5 text-sm flex justify-between items-center gap-2 min-w-0 ${$selectedFeedId === feed.id ? ($themeMode === 'dark' ? 'text-o3-white' : 'text-o3-black-90') : feed.error ? 'text-o3-claret' : $themeMode === 'dark' ? 'text-o3-black-30 group-hover:text-o3-white' : 'text-o3-black-80 group-hover:text-o3-black-90'}`}
                             on:click={() => selectFeed(feed.id)}
@@ -283,7 +283,7 @@
                 {@const activeBg = $themeMode === 'dark' ? 'bg-o3-black-80' : 'bg-o3-black-10'}
                 {@const hoverBg = $themeMode === 'dark' ? 'hover:bg-o3-black-80/30' : 'hover:bg-o3-black-10'}
                 {@const loadingBg = $themeMode === 'dark' ? 'bg-o3-black-80/50' : 'bg-o3-black-5'}
-                <div class="group flex items-center w-full {$selectedFeedId === feed.id ? (activeBg + ' border-l-2 ' + (feed.error ? 'border-o3-claret' : 'border-o3-teal')) : feed.error ? (activeBg + ' border-l-2 border-o3-claret') : isUpdating ? loadingBg : hoverBg}">
+                <div class="group flex items-center w-full transition-all duration-200 ease-out {$selectedFeedId === feed.id ? (activeBg + ' border-l-2 ' + (feed.error ? 'border-o3-claret' : 'border-o3-teal')) : feed.error ? (activeBg + ' border-l-2 border-o3-claret') : isUpdating ? loadingBg : hoverBg} hover:translate-x-1">
                     <button 
                         class="flex-1 text-left px-3 py-1.5 text-sm flex justify-between items-center gap-2 min-w-0 {$selectedFeedId === feed.id ? ($themeMode === 'dark' ? 'text-o3-white' : 'text-o3-black-90') : feed.error ? 'text-o3-claret' : $themeMode === 'dark' ? 'text-o3-black-30 group-hover:text-o3-white' : 'text-o3-black-80 group-hover:text-o3-black-90'}"
                         on:click={() => selectFeed(feed.id)}

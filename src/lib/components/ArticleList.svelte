@@ -1,6 +1,8 @@
 <script lang="ts">
 import { liveQuery, type Observable } from "dexie";
 import { onDestroy } from "svelte";
+import { fly } from "svelte/transition";
+import { quintOut } from "svelte/easing";
 import {
     db,
     type Article,
@@ -708,10 +710,11 @@ function handleWindowClick(event: MouseEvent) {
         style="overflow-x: hidden !important;"
     >
         {#if $articlesStore}
-            {#each $articlesStore as article (article.id)}
+            {#each $articlesStore as article, i (article.id)}
                 <div
                     id={"article-list-item-" + article.id}
-                    class="relative w-full flex items-stretch border-b group transition-colors"
+                    in:fly={{ y: 20, duration: 400, delay: Math.min(i * 30, 300), easing: quintOut }}
+                    class="relative w-full flex items-stretch border-b group transition-colors duration-200"
                     class:bg-o3-black-80={$selectedArticleId === article.id &&
                         $themeMode === "dark"}
                     class:bg-o3-black-10={$selectedArticleId === article.id &&
@@ -724,7 +727,7 @@ function handleWindowClick(event: MouseEvent) {
                     style={`border-color: ${isArticleSelected(article.id) ? "transparent" : $themeMode === "dark" ? "rgba(255, 255, 255, 0.1)" : "var(--o3-color-palette-black-30)"}`}
                 >
                     <button
-                        class="flex-1 text-left p-4 relative min-w-0 focus:outline-none outline-none ring-0 focus:ring-0"
+                        class="flex-1 text-left p-4 relative min-w-0 focus:outline-none outline-none ring-0 focus:ring-0 active:scale-[0.99] transition-transform duration-100"
                         on:click={() =>
                             selectionMode ? toggleSelection(article.id) : selectArticle(article.id)}
                         aria-label={`Read article: ${article.title}`}
