@@ -154,15 +154,13 @@
 
         <div class="flex gap-1">
             {#if $refreshProgress}
-                <div class="flex-1 flex flex-col gap-1">
-                    <button 
-                        class="w-full text-[10px] bg-o3-black-80 py-1 text-o3-paper cursor-default relative overflow-hidden"
-                        disabled
-                    >
-                        <div class="absolute inset-0 bg-o3-teal opacity-30" style="width: {($refreshProgress.completed / $refreshProgress.total) * 100}%"></div>
-                        <span class="relative z-10">Updating {$refreshProgress.completed}/{$refreshProgress.total}</span>
-                    </button>
-                </div>
+                <button 
+                    class="flex-1 o3-button o3-button--small relative overflow-hidden !bg-o3-black-80 !text-o3-paper !border-none cursor-default"
+                    disabled
+                >
+                    <div class="absolute inset-0 bg-o3-teal opacity-30" style="width: {($refreshProgress.completed / $refreshProgress.total) * 100}%"></div>
+                    <span class="relative z-10">Updating {$refreshProgress.completed}/{$refreshProgress.total}</span>
+                </button>
             {:else}
                 <button 
                     class="flex-1 o3-button o3-button--secondary o3-button--small o3-button-icon o3-button-icon--refresh"
