@@ -6,24 +6,27 @@ Thank you for your interest in contributing to Vesper. We welcome bug reports, f
 
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/vesper.git
-   cd vesper
-   ```
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/vesper.git
+    cd vesper
+    ```
 3. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+    ```bash
+    npm install
+    ```
 4. **Create a feature branch:**
-   ```bash
-   git checkout -b feat/your-feature
-   ```
+    ```bash
+    git checkout -b feat/your-feature
+    ```
 
 ## Development
 
 - Run `npm run dev` to start the development server
 - Run `npm run check` for type-checking
 - Run `npm run build` to create a production build
+- Run `npm run test` to run the test suite
+- Run `npm run lint` to check code quality
+- Run `npm run format:fix` to format code before committing
 
 See [AGENTS.md](./AGENTS.md) for detailed architecture and code style conventions.
 
@@ -33,7 +36,7 @@ See [AGENTS.md](./AGENTS.md) for detailed architecture and code style convention
 - **Svelte**: Use `<script lang="ts">` with strict type annotations
 - **Naming**: camelCase for functions, UPPERCASE for constants, PascalCase for types
 - **Imports**: Relative imports within packages, absolute imports from `$lib/`
-- **Tailwind**: Use o3-* color tokens from FT Origami
+- **Tailwind**: Use o3-\* color tokens from FT Origami
 
 ## Submitting Changes
 

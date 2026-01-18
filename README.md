@@ -8,12 +8,12 @@ An elegant, sophisticated, completely offline-first RSS reader that looks and fe
 
 ## Features
 
-- 🌙 **Offline-first** — Works completely offline with IndexedDB + PWA support
-- 💻 **Desktop-focused** — Three-panel FT.com-inspired layout optimized for desktop browsers
-- 🔄 **Smart sync** — Auto-refresh feeds with intelligent archiving (top 50 unread preserved)
+- 🌙 **Offline-capable** — Local storage with IndexedDB; PWA-ready with service worker for caching
+- 💻 **Desktop-first** — Three-panel FT.com-inspired layout optimized for desktop browsers (responsive design in progress)
+- 🔄 **Smart sync** — Manual feed refresh with intelligent archiving (top 50 unread preserved for newly fetched articles)
 - 📥 **OPML support** — Import and export your feeds
 - 🎨 **Beautiful UI** — FT Origami O3 design tokens with custom typography
-- 🔍 **Fast search** — Tokenized full-text search across articles
+- 🔍 **Fast search** — Tokenized search across article titles, content, and snippets
 - 🌓 **Dark & light modes** — Seamless theme switching
 
 ## Screenshots
@@ -27,28 +27,39 @@ An elegant, sophisticated, completely offline-first RSS reader that looks and fe
 ## Quick Start
 
 1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+
+    ```bash
+    npm install
+    ```
 
 2. **Run development server:**
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:5173](http://localhost:5173)
+
+    ```bash
+    npm run dev
+    ```
+
+    Open [http://localhost:5173](http://localhost:5173)
 
 3. **Build for production:**
-   ```bash
-   npm run build
-   ```
+    ```bash
+    npm run build
+    ```
 
 ## Development
 
 ```bash
-npm run dev           # Start dev server
+npm run dev           # Start dev server (localhost:5173)
 npm run build         # Build for production
+npm run preview       # Preview production build locally
 npm run check         # Type-check with svelte-check
 npm run check:watch   # Watch mode type-checking
+npm run test          # Run tests with Vitest
+npm run test:ui       # Run tests with UI
+npm run test:coverage # Run tests with coverage report
+npm run lint          # Lint code with ESLint
+npm run lint:fix      # Fix linting issues automatically
+npm run format        # Check code formatting with Prettier
+npm run format:fix    # Format code with Prettier
 ```
 
 See [AGENTS.md](./AGENTS.md) for detailed architecture and code conventions.
@@ -56,11 +67,32 @@ See [AGENTS.md](./AGENTS.md) for detailed architecture and code conventions.
 ## Tech Stack
 
 - **Framework**: SvelteKit 2 (SSR off, prerendered SPA)
-- **Database**: Dexie.js (IndexedDB) for offline-first storage
+- **Database**: Dexie.js (IndexedDB) for local storage
 - **Styling**: Tailwind CSS + FT Origami O3 design tokens
 - **UI**: Skeleton Labs
 - **Fonts**: Playfair Display (headlines) & IBM Plex Sans (body)
 - **Key Libraries**: fast-xml-parser, DOMPurify, date-fns
+
+## Configuration
+
+### Environment Variables
+
+- `VITE_FEED_PROXY_BASE` (optional): Custom proxy URL for fetching RSS feeds. Defaults to `/api/fetch-feed` on the same origin.
+
+### Search
+
+Search tokenizes article titles, content, and snippets with:
+
+- Stop-word filtering (63 common words excluded)
+- Minimum word length: 2 characters
+- Unique token extraction for fast queries
+
+### Security
+
+Article content is sanitized using DOMPurify with strict HTML tag whitelisting:
+
+- **Allowed tags**: `b`, `i`, `em`, `strong`, `a`, `p`, `br`, `ul`, `ol`, `li`, `blockquote`, `img`, `h1-h4`, `code`, `pre`
+- **Allowed attributes**: `href`, `src`, `alt`, `title`, `class`, `target`
 
 ## Project Structure
 
