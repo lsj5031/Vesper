@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { db } from './db';
 import { exportBackup, importBackup } from './backup';
 
-describe.skip('backup - export/import (requires IndexedDB)', () => {
+describe('backup - export/import (requires IndexedDB)', () => {
 	beforeEach(async () => {
 		await db.feeds.clear();
 		await db.folders.clear();
@@ -34,18 +34,34 @@ describe.skip('backup - export/import (requires IndexedDB)', () => {
 			await db.folders.add({ name: 'Test Folder' });
 			await db.settings.add({ key: 'test', value: 'value' });
 
-			const blobSpy = vi.spyOn(global, 'Blob').mockImplementation((content: BlobPart[] = [], options: BlobPropertyBag = {}): Blob => {
-				return {
-					type: options?.type || '',
-				} as Blob;
-			});
+			let capturedContent: BlobPart[] = [];
+			const OriginalBlob = global.Blob;
+			global.Blob = class MockBlob extends OriginalBlob {
+				constructor(content: BlobPart[] = [], options: BlobPropertyBag = {}) {
+					super(content, options);
+					capturedContent = content;
+				}
+			} as typeof Blob;
+
+			const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue({
+				href: '',
+				download: '',
+				click: vi.fn()
+			} as unknown as HTMLAnchorElement);
+
+			URL.createObjectURL = vi.fn(() => 'blob:mock-url');
 
 			await exportBackup();
 
-			expect(blobSpy).toHaveBeenCalledWith(
-				expect.any(Array),
-				expect.objectContaining({ type: 'application/json' })
-			);
+			expect(capturedContent.length).toBeGreaterThan(0);
+			const jsonContent = capturedContent[0] as string;
+			const parsed = JSON.parse(jsonContent);
+			expect(parsed).toHaveProperty('feeds');
+			expect(parsed).toHaveProperty('folders');
+			expect(parsed).toHaveProperty('settings');
+
+			global.Blob = OriginalBlob;
+			createElementSpy.mockRestore();
 		});
 	});
 

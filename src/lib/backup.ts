@@ -6,6 +6,15 @@ export interface BackupProgress {
     total: number;
 }
 
+interface BackupData {
+    version: number;
+    timestamp: number;
+    feeds: Array<{ url: string; [key: string]: unknown }>;
+    folders: Array<{ name?: string; [key: string]: unknown }>;
+    articles: Array<{ feedId: number; guid: string; [key: string]: unknown }>;
+    settings: Array<{ key?: string; [key: string]: unknown }>;
+}
+
 /**
  * Exports all database data to a JSON backup file.
  *
@@ -36,7 +45,7 @@ export async function exportBackup(onProgress?: (progress: BackupProgress) => vo
     a.href = url;
     a.download = `vesper-backup-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
 }
 
 /**
@@ -83,40 +92,47 @@ export async function importBackup(file: File, onProgress?: (progress: BackupPro
 
         if (data.feeds.length) {
             onProgress?.({ stage: 'Restoring feeds', current: ++currentStep, total: totalSteps });
-            await db.feeds.bulkAdd(data.feeds as any);
+            await db.feeds.bulkPut(data.feeds as any);
         }
         if (data.folders.length) {
             onProgress?.({ stage: 'Restoring folders', current: ++currentStep, total: totalSteps });
-            await db.folders.bulkAdd(data.folders as any);
+            await db.folders.bulkPut(data.folders as any);
         }
         if (data.articles.length) {
             onProgress?.({ stage: 'Restoring articles', current: ++currentStep, total: totalSteps });
-            await db.articles.bulkAdd(data.articles as any);
+            await db.articles.bulkPut(data.articles as any);
         }
         if (data.settings.length) {
             onProgress?.({ stage: 'Restoring settings', current: ++currentStep, total: totalSteps });
-            await db.settings.bulkAdd(data.settings as any);
+            await db.settings.bulkPut(data.settings as any);
         }
     });
 }
 
-function isValidBackupData(data: unknown): data is {
-    version: number;
-    timestamp: number;
-    feeds: unknown[];
-    folders: unknown[];
-    articles: unknown[];
-    settings: unknown[];
-} {
+function isValidBackupData(data: unknown): data is BackupData {
     if (typeof data !== 'object' || data === null) return false;
     
     const d = data as Record<string, unknown>;
-    return (
-        'version' in d &&
-        'timestamp' in d &&
-        'feeds' in d && Array.isArray(d.feeds) &&
-        'folders' in d && Array.isArray(d.folders) &&
-        'articles' in d && Array.isArray(d.articles) &&
-        'settings' in d && Array.isArray(d.settings)
-    );
+    
+    // Check required fields exist and have correct types
+    if (typeof d.version !== 'number') return false;
+    if (typeof d.timestamp !== 'number') return false;
+    if (!Array.isArray(d.feeds)) return false;
+    if (!Array.isArray(d.folders)) return false;
+    if (!Array.isArray(d.articles)) return false;
+    if (!Array.isArray(d.settings)) return false;
+    
+    // Basic validation of array contents
+    for (const feed of d.feeds) {
+        if (typeof feed !== 'object' || feed === null) return false;
+        if (typeof (feed as any).url !== 'string') return false;
+    }
+    
+    for (const article of d.articles) {
+        if (typeof article !== 'object' || article === null) return false;
+        if (typeof (article as any).feedId !== 'number') return false;
+        if (typeof (article as any).guid !== 'string') return false;
+    }
+    
+    return true;
 }

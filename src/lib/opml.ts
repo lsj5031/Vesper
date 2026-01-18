@@ -1,4 +1,5 @@
 import { db } from './db';
+import { logger } from './logger';
 
 function escapeXml(s: string): string {
     return s
@@ -61,6 +62,18 @@ export async function importOPML(file: File, onProgress?: (progress: ImportProgr
     const totalItems = countItems(body);
     let processedItems = 0;
 
+    // Pre-load existing feeds and folders for O(1) lookups
+    const existingFeeds = await db.feeds.toArray();
+    const existingFeedUrls = new Set(existingFeeds.map(f => f.url));
+
+    const existingFolders = await db.folders.toArray();
+    const folderNameToId = new Map<string, number>();
+    existingFolders.forEach(f => {
+        if (f.id !== undefined) {
+            folderNameToId.set(f.name, f.id);
+        }
+    });
+
     const processOutline = async (node: Element, parentFolderId?: number) => {
         const xmlUrl = node.getAttribute('xmlUrl');
         const textAttr = node.getAttribute('text') || node.getAttribute('title');
@@ -68,14 +81,14 @@ export async function importOPML(file: File, onProgress?: (progress: ImportProgr
         if (xmlUrl) {
             // It's a feed
             try {
-                const existing = await db.feeds.where('url').equals(xmlUrl).first();
-                if (!existing) {
+                if (!existingFeedUrls.has(xmlUrl)) {
                     await db.feeds.add({
                         url: xmlUrl,
                         title: textAttr || 'Untitled',
                         website: node.getAttribute('htmlUrl') || '',
                         folderId: parentFolderId
                     });
+                    existingFeedUrls.add(xmlUrl);
                 }
                 processedItems++;
                 onProgress?.({
@@ -84,7 +97,7 @@ export async function importOPML(file: File, onProgress?: (progress: ImportProgr
                     currentFile: textAttr || 'Untitled'
                 });
             } catch (e) {
-                console.error('Failed to import feed', xmlUrl, e);
+                logger.error('Failed to import feed', e, 'OPML');
                 processedItems++;
                 onProgress?.({
                     current: processedItems,
@@ -92,16 +105,20 @@ export async function importOPML(file: File, onProgress?: (progress: ImportProgr
                     currentFile: textAttr || 'Untitled'
                 });
             }
-        } else if (node.querySelectorAll('outline').length > 0) {
+        } else if (Array.from(node.children).some(c => c.tagName.toLowerCase() === 'outline')) {
             // It's likely a folder
             let folderId = parentFolderId;
             if (textAttr) {
                 // Create folder
-                const existingFolder = await db.folders.where('name').equals(textAttr).first();
-                if (existingFolder) {
-                    folderId = existingFolder.id;
+                const existingFolderId = folderNameToId.get(textAttr);
+                if (existingFolderId !== undefined) {
+                    folderId = existingFolderId;
                 } else {
-                    folderId = await db.folders.add({ name: textAttr });
+                    const newFolderId = await db.folders.add({ name: textAttr });
+                    folderId = newFolderId;
+                    if (newFolderId !== undefined) {
+                        folderNameToId.set(textAttr, newFolderId);
+                    }
                 }
             }
             

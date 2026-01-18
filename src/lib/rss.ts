@@ -144,7 +144,14 @@ export async function fetchFeed(
                 try {
                     for (const proxyUrl of proxyUrls) {
                         try {
-                            const response = await fetch(proxyUrl);
+                            const controller = new AbortController();
+                            const timeoutId = setTimeout(() => controller.abort(), RSS_CONFIG.FETCH_TIMEOUT_MS);
+                            let response: Response;
+                            try {
+                                response = await fetch(proxyUrl, { signal: controller.signal });
+                            } finally {
+                                clearTimeout(timeoutId);
+                            }
                             if (!response.ok) throw new Error(`HTTP ${response.status}`);
                             
                             let text = await response.text();
@@ -168,7 +175,7 @@ export async function fetchFeed(
 
                 const isRetryable = candidateError instanceof TypeError || (candidateError as any)?.message?.includes('HTTP');
                 if (attempt < maxRetries && isRetryable) {
-                    await new Promise(resolve => setTimeout(resolve, RSS_CONFIG.BACKOFF_BASE_MS * (attempt + 1))); // Exponential backoff
+                    await new Promise(resolve => setTimeout(resolve, RSS_CONFIG.BACKOFF_BASE_MS * Math.pow(2, attempt))); // Exponential backoff
                     continue;
                 }
                 break;
@@ -203,7 +210,8 @@ export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_L
         });
 
         // Process all articles (convert to Article objects first)
-        const processedArticles: Article[] = data.items.map((item: any) => {
+        const items = Array.isArray(data.items) ? data.items : [];
+        const processedArticles: Article[] = items.map((item: any) => {
             const contentRaw = item['content:encoded'] || item.content || item.summary || '';
             const cleanContent = sanitize(contentRaw);
             const resolvedLink = resolveItemLink(item, feed);
@@ -222,7 +230,12 @@ export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_L
                 title: item.title || 'Untitled',
                 link: resolvedLink,
                 content: cleanContent,
-                snippet: cleanContent.replace(/<[^>]*>?/gm, '').substring(0, ARTICLE_CONFIG.SNIPPET_LENGTH) + '...',
+                snippet: (() => {
+                    const snippetText = cleanContent.replace(/<[^>]*>?/gm, '');
+                    return snippetText.length > ARTICLE_CONFIG.SNIPPET_LENGTH
+                        ? snippetText.substring(0, ARTICLE_CONFIG.SNIPPET_LENGTH) + '...'
+                        : snippetText;
+                })(),
                 author: item.creator || item['dc:creator'],
                 isoDate: item.isoDate || new Date().toISOString(),
                 receivedDate: Date.now(),
@@ -239,13 +252,13 @@ export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_L
         // Find which of these GUIDs already exist for this feed
         const existingGuidsSet = new Set<string>();
         
-        // Use the compound index to find matching records but only select the 'guid' field.
-        const existingRecords = await db.articles
+        // Use the compound index and .keys() to only get the compound key tuples (avoids loading full article content)
+        const existingKeys = await db.articles
             .where('[feedId+guid]')
             .anyOf(incomingGuids.map(g => [feed.id!, g]))
-            .toArray();
+            .keys();
             
-        existingRecords.forEach(r => existingGuidsSet.add(r.guid));
+        (existingKeys as unknown as [number, string][]).forEach(([, guid]) => existingGuidsSet.add(guid));
 
         // Build lookups for backfilling missing links
         const processedByGuid = new Map<string, Article>();
@@ -268,24 +281,36 @@ export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_L
         const updatedArticleIds = new Set<number>();
 
         // Backfill missing links on existing articles when we can now resolve them
-        const existingByGuid = new Map(existingRecords.map(r => [r.guid, r]));
-        const articlesNeedingLinkUpdate = processedArticles.filter(a => {
-            const existing = existingByGuid.get(a.guid);
-            return existing && (!existing.link || existing.link.trim() === '') && a.link;
-        });
+        // Only fetch existing records that have a potential link update (processed article has a link)
+        const existingGuidsWithNewLinks = processedArticles
+            .filter(a => a.link && existingGuidsSet.has(a.guid))
+            .map(a => a.guid);
 
-        if (articlesNeedingLinkUpdate.length > 0) {
-            await Promise.all(
-                articlesNeedingLinkUpdate.map(article =>
-                    db.articles.where('[feedId+guid]').equals([feed.id!, article.guid]).modify({ link: article.link })
-                )
-            );
+        if (existingGuidsWithNewLinks.length > 0) {
+            const existingRecordsForBackfill = await db.articles
+                .where('[feedId+guid]')
+                .anyOf(existingGuidsWithNewLinks.map(g => [feed.id!, g]))
+                .toArray();
 
-            articlesNeedingLinkUpdate.forEach(article => {
-                matchedProcessedGuids.add(article.guid);
-                const existing = existingByGuid.get(article.guid);
-                if (existing?.id !== undefined) updatedArticleIds.add(existing.id);
+            const existingByGuid = new Map(existingRecordsForBackfill.map(r => [r.guid, r]));
+            const articlesNeedingLinkUpdate = processedArticles.filter(a => {
+                const existing = existingByGuid.get(a.guid);
+                return existing && (!existing.link || existing.link.trim() === '') && a.link;
             });
+
+            if (articlesNeedingLinkUpdate.length > 0) {
+                await Promise.all(
+                    articlesNeedingLinkUpdate.map(article =>
+                        db.articles.where('[feedId+guid]').equals([feed.id!, article.guid]).modify({ link: article.link })
+                    )
+                );
+
+                articlesNeedingLinkUpdate.forEach(article => {
+                    matchedProcessedGuids.add(article.guid);
+                    const existing = existingByGuid.get(article.guid);
+                    if (existing?.id !== undefined) updatedArticleIds.add(existing.id);
+                });
+            }
         }
 
         // If GUID changed between runs (e.g., we previously fell back to title), attempt a title-based backfill
@@ -347,8 +372,9 @@ export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_L
             archived: archivedArticles.length,
             total: allNewArticles.length
         };
-    } catch (err: any) {
-        await db.feeds.update(feed.id!, { error: err.message });
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        await db.feeds.update(feed.id!, { error: message });
         throw err;
     }
 }

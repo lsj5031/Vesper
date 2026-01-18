@@ -1,5 +1,5 @@
 <script lang="ts">
-import { liveQuery } from "dexie";
+import { liveQuery, type Observable } from "dexie";
 import { onDestroy } from "svelte";
 import {
     db,
@@ -34,7 +34,7 @@ let isDark = true;
 $: isDark = $themeMode === "dark";
 
 // We need reactive queries for feeds and articles
-let articlesStore: any;
+let articlesStore: Observable<Article[]> | undefined;
 const feedsStore = liveQuery(() => db.feeds.toArray());
 let feedTitleMap: Record<number, string> = {};
 
@@ -727,7 +727,7 @@ function handleWindowClick(event: MouseEvent) {
                         class="flex-1 text-left p-4 relative min-w-0 focus:outline-none outline-none ring-0 focus:ring-0"
                         on:click={() =>
                             selectionMode ? toggleSelection(article.id) : selectArticle(article.id)}
-                        aria-label="Read article: {article.title}"
+                        aria-label={`Read article: ${article.title}`}
                     >
                         {#if article.read === 0}
                             <span class="absolute top-4 right-4 badge-unread">New</span>
@@ -763,18 +763,20 @@ function handleWindowClick(event: MouseEvent) {
                         </div>
                     </button>
 
-                    <a
-                        href={article.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="absolute bottom-2 right-2 z-20 o3-button o3-button--ghost o3-button--small o3-button-icon o3-button-icon--outside-page o3-button-icon--icon-only opacity-0 group-hover:opacity-100 transition-all"
-                        data-o3-theme={$themeMode === "dark" ? "inverse" : "standard"}
-                        on:click|stopPropagation
-                        title="Open in New Tab"
-                        aria-label="Open in New Tab"
-                    >
-                        <span class="o3-button-icon__label">Open</span>
-                    </a>
+                    {#if article.link}
+                        <a
+                            href={article.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="absolute bottom-2 right-2 z-20 o3-button o3-button--ghost o3-button--small o3-button-icon o3-button-icon--outside-page o3-button-icon--icon-only opacity-0 group-hover:opacity-100 transition-all"
+                            data-o3-theme={$themeMode === "dark" ? "inverse" : "standard"}
+                            on:click|stopPropagation
+                            title="Open in New Tab"
+                            aria-label="Open in New Tab"
+                        >
+                            <span class="o3-button-icon__label">Open</span>
+                        </a>
+                    {/if}
                 </div>
             {/each}
 

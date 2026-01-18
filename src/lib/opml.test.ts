@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { db } from './db';
 import { importOPML, exportOPML } from './opml';
 
-describe.skip('opml - import/export (requires IndexedDB)', () => {
+describe('opml - import/export (requires IndexedDB)', () => {
 	beforeEach(async () => {
 		await db.feeds.clear();
 		await db.folders.clear();
@@ -162,12 +162,14 @@ describe.skip('opml - import/export (requires IndexedDB)', () => {
 				{ url: 'https://example.com/feed2', title: 'Feed 2', website: 'https://example.com' }
 			]);
 
-			const blobSpy = vi.spyOn(global, 'Blob').mockImplementation((parts: BlobPart[] = []) => {
-				return {
-					type: 'text/xml',
-					size: JSON.stringify(parts).length
-				} as Blob;
-			});
+			let capturedContent: BlobPart[] = [];
+			const OriginalBlob = global.Blob;
+			global.Blob = class MockBlob extends OriginalBlob {
+				constructor(parts: BlobPart[] = [], options: BlobPropertyBag = {}) {
+					super(parts, options);
+					capturedContent = parts;
+				}
+			} as typeof Blob;
 
 			const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue({
 				href: '',
@@ -179,13 +181,14 @@ describe.skip('opml - import/export (requires IndexedDB)', () => {
 
 			await exportOPML();
 
-			expect(blobSpy).toHaveBeenCalledWith(
-				expect.arrayContaining([expect.stringContaining('<?xml version="1.0"')]),
-				expect.objectContaining({ type: 'text/xml' })
-			);
+			expect(capturedContent.length).toBeGreaterThan(0);
+			const xmlContent = capturedContent[0] as string;
+			expect(xmlContent).toContain('<?xml version="1.0"');
+			expect(xmlContent).toContain('Feed 1');
+			expect(xmlContent).toContain('Feed 2');
 			expect(createElementSpy).toHaveBeenCalledWith('a');
 
-			blobSpy.mockRestore();
+			global.Blob = OriginalBlob;
 			createElementSpy.mockRestore();
 		});
 
