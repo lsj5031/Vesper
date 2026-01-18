@@ -47,6 +47,12 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
+            - name: Install system dependencies (Linux)
+              if: matrix.os == 'ubuntu-latest'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+
             - name: Build production bundle
               run: npm run build
 
@@ -142,7 +148,7 @@ jobs:
 
                       ### Installation
                       - **macOS**: Download `.dmg` and drag to Applications
-                      - **Windows**: Download `.msi` and run installer  
+                      - **Windows**: Download `.msi` and run installer
                       - **Linux**: Download `.deb` and install with `sudo dpkg -i vesper-rss*.deb`
 
                       ### Direct Fetch Mode
