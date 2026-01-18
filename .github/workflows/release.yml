@@ -60,7 +60,7 @@ jobs:
               if: matrix.os == 'windows-latest'
               shell: pwsh
               run: |
-                  Start-Process -NoNewWindow npm -ArgumentList "run","preview"
+                  $job = Start-Process -FilePath "node" -ArgumentList ".svelte-kit/output/server/index.js" -PassThru -RedirectStandardOutput "out.txt" -RedirectStandardError "err.txt"
                   Start-Sleep -Seconds 10
 
             - name: Setup Pake CLI
@@ -77,9 +77,7 @@ jobs:
               if: matrix.os == 'windows-latest'
               shell: pwsh
               run: |
-                  pake http://localhost:4173 `
-                    --name "Vesper RSS" `
-                    --icon ${{ matrix.icon_path }}
+                  pake http://localhost:4173 --name "Vesper RSS" --icon ${{ matrix.icon_path }}
 
             - name: List build outputs
               shell: bash
