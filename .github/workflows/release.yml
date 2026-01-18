@@ -1,0 +1,160 @@
+name: Build Desktop App with Pake
+
+on:
+    push:
+        tags:
+            - "v*.*.*"
+    workflow_dispatch:
+        inputs:
+            version:
+                description: "Version tag (e.g., v1.0.0)"
+                required: true
+                default: "v1.0.0"
+
+permissions:
+    contents: write
+
+jobs:
+    build:
+        runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                os: [ubuntu-latest, macos-latest, windows-latest]
+                include:
+                    - os: ubuntu-latest
+                      platform: linux
+                      asset_name: Vesper-RSS
+                      icon_path: ./static/icon-512.png
+                    - os: macos-latest
+                      platform: mac
+                      asset_name: Vesper-RSS
+                      icon_path: ./static/icon-512.png
+                    - os: windows-latest
+                      platform: windows
+                      asset_name: Vesper-RSS
+                      icon_path: ./static/vesper.ico
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "22"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build production bundle
+              run: npm run build
+
+            - name: Start preview server (Linux/Mac)
+              if: matrix.os != 'windows-latest'
+              run: |
+                  npm run preview &
+                  sleep 10
+
+            - name: Start preview server (Windows)
+              if: matrix.os == 'windows-latest'
+              shell: pwsh
+              run: |
+                  Start-Process -NoNewWindow npm -ArgumentList "run","preview"
+                  Start-Sleep -Seconds 10
+
+            - name: Setup Pake CLI
+              run: npm install -g pake-cli
+
+            - name: Build desktop app (Linux/Mac)
+              if: matrix.os != 'windows-latest'
+              run: |
+                  pake http://localhost:4173 \
+                    --name "Vesper RSS" \
+                    --icon ${{ matrix.icon_path }}
+
+            - name: Build desktop app (Windows)
+              if: matrix.os == 'windows-latest'
+              shell: pwsh
+              run: |
+                  pake http://localhost:4173 `
+                    --name "Vesper RSS" `
+                    --icon ${{ matrix.icon_path }}
+
+            - name: List build outputs
+              shell: bash
+              run: |
+                  ls -lah
+                  find . -type f \( -name "*.dmg" -o -name "*.deb" -o -name "*.msi" -o -name "*.exe" -o -name "*.app" \) 2>/dev/null || true
+
+            - name: Upload artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: vesper-rss-${{ matrix.platform }}
+                  path: |
+                      *.dmg
+                      *.deb
+                      *.msi
+                      *.exe
+                      *.app
+                  if-no-files-found: warn
+
+    release:
+        needs: build
+        runs-on: ubuntu-latest
+        if: startsWith(github.ref, 'refs/tags/')
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Download all artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  path: ./artifacts
+
+            - name: Display structure of downloaded files
+              run: ls -R ./artifacts
+
+            - name: Organize and rename artifacts
+              run: |
+                  mkdir -p ./release
+                  find ./artifacts -type f \( -name "*.dmg" -o -name "*.deb" -o -name "*.msi" -o -name "*.exe" \) -exec cp {} ./release/ \;
+                  ls -lah ./release
+
+            - name: Create checksums
+              run: |
+                  cd ./release
+                  sha256sum * > SHA256SUMS.txt
+                  cat SHA256SUMS.txt
+
+            - name: Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: ./release/*
+                  draft: false
+                  prerelease: false
+                  generate_release_notes: true
+                  body: |
+                      ## Desktop App Downloads
+
+                      Pre-built desktop packages for Vesper RSS Reader.
+
+                      **Note:** Enable "Direct Fetch Mode" in Settings for desktop apps without a server proxy.
+
+                      ### Installation
+                      - **macOS**: Download `.dmg` and drag to Applications
+                      - **Windows**: Download `.msi` and run installer  
+                      - **Linux**: Download `.deb` and install with `sudo dpkg -i vesper-rss*.deb`
+
+                      ### Direct Fetch Mode
+
+                      Desktop apps run without a server proxy. Enable **Direct Fetch Mode** in Settings:
+                      - ✅ Works with CORS-friendly feeds (blogs, personal sites)
+                      - ⚠️ Some feeds may fail due to CORS (major news sites)
+                      - 💡 Disable Direct Fetch Mode if feeds don't load
+
+                      ### What's New
+                      See the [changelog](https://github.com/lsj5031/vesper/blob/main/CHANGELOG.md) for details.
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

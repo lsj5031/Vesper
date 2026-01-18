@@ -1,27 +1,48 @@
-import DOMPurify from 'dompurify';
-import { db, type Feed, type Article } from './db';
-import { tokenize } from './search';
-import { refreshProgress } from './stores';
-import { logger } from './logger';
+import DOMPurify from "dompurify";
+import { db, type Feed, type Article } from "./db";
+import { tokenize } from "./search";
+import { refreshProgress } from "./stores";
+import { logger } from "./logger";
 
-import { RSS_CONFIG, ARTICLE_CONFIG } from './config';
-const FEED_PROXY_BASE = (import.meta.env.VITE_FEED_PROXY_BASE || '').trim();
+import { RSS_CONFIG, ARTICLE_CONFIG } from "./config";
+import { userSettings } from "./stores";
+const FEED_PROXY_BASE = (import.meta.env.VITE_FEED_PROXY_BASE || "").trim();
 const inFlightFeedRequests = new Map<string, Promise<any>>();
 const feedFailureState = new Map<string, { count: number; nextAllowed: number }>();
 let lastRefreshAllAt = 0;
 
 // Initialize DOMPurify (needs window context, so check for browser)
 let sanitize = (html: string) => html;
-if (typeof window !== 'undefined') {
-    sanitize = (html: string) => DOMPurify.sanitize(html, {
-        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li', 'blockquote', 'img', 'h1', 'h2', 'h3', 'h4', 'code', 'pre'],
-        ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target']
-    });
+if (typeof window !== "undefined") {
+    sanitize = (html: string) =>
+        DOMPurify.sanitize(html, {
+            ALLOWED_TAGS: [
+                "b",
+                "i",
+                "em",
+                "strong",
+                "a",
+                "p",
+                "br",
+                "ul",
+                "ol",
+                "li",
+                "blockquote",
+                "img",
+                "h1",
+                "h2",
+                "h3",
+                "h4",
+                "code",
+                "pre",
+            ],
+            ALLOWED_ATTR: ["href", "src", "alt", "title", "class", "target"],
+        });
 }
 
 function resolveUrl(candidate: string, bases: string[]): string {
     const trimmed = candidate.trim();
-    if (!trimmed) return '';
+    if (!trimmed) return "";
 
     try {
         // Absolute URL
@@ -37,7 +58,7 @@ function resolveUrl(candidate: string, bases: string[]): string {
         }
     }
 
-    return '';
+    return "";
 }
 
 function resolveItemLink(item: any, feed: Feed): string {
@@ -46,29 +67,30 @@ function resolveItemLink(item: any, feed: Feed): string {
     const linkCandidate = Array.isArray(item.link) ? item.link[0] : item.link;
     // rss-parser sometimes returns Atom links as objects with href
     const rawLink =
-        (typeof linkCandidate === 'string' && linkCandidate) ? linkCandidate :
-        (linkCandidate && typeof linkCandidate.href === 'string') ? linkCandidate.href :
-        '';
+        typeof linkCandidate === "string" && linkCandidate
+            ? linkCandidate
+            : linkCandidate && typeof linkCandidate.href === "string"
+              ? linkCandidate.href
+              : "";
 
-    const guidCandidate = typeof item.guid === 'string' ? item.guid : '';
+    const guidCandidate = typeof item.guid === "string" ? item.guid : "";
 
-    return (
-        resolveUrl(rawLink, baseCandidates) ||
-        resolveUrl(guidCandidate, baseCandidates) ||
-        ''
-    );
+    return resolveUrl(rawLink, baseCandidates) || resolveUrl(guidCandidate, baseCandidates) || "";
 }
 
 function normalizeFeedUrl(url: string): string {
     try {
         const parsed = new URL(url.trim());
 
-        if (parsed.hostname === 'feeds.feedburner.com' || parsed.hostname === 'feedburner.google.com') {
-            parsed.searchParams.set('format', 'xml');
-            if (!parsed.searchParams.has('fmt')) parsed.searchParams.set('fmt', 'xml');
+        if (
+            parsed.hostname === "feeds.feedburner.com" ||
+            parsed.hostname === "feedburner.google.com"
+        ) {
+            parsed.searchParams.set("format", "xml");
+            if (!parsed.searchParams.has("fmt")) parsed.searchParams.set("fmt", "xml");
 
-            if (parsed.pathname === '/' || parsed.pathname === '') {
-                parsed.pathname = `/feeds/${parsed.hostname.split('.').reverse().join('/')}`;
+            if (parsed.pathname === "/" || parsed.pathname === "") {
+                parsed.pathname = `/feeds/${parsed.hostname.split(".").reverse().join("/")}`;
             }
         }
 
@@ -83,12 +105,12 @@ function buildFeedUrlVariants(url: string): string[] {
     const normalized = normalizeFeedUrl(url);
     variants.add(normalized);
 
-    const trimmedTrailingSlash = normalized.replace(/\/+$/, '');
+    const trimmedTrailingSlash = normalized.replace(/\/+$/, "");
     variants.add(trimmedTrailingSlash);
 
     try {
         const flipped = new URL(normalized);
-        flipped.protocol = flipped.protocol === 'https:' ? 'http:' : 'https:';
+        flipped.protocol = flipped.protocol === "https:" ? "http:" : "https:";
         variants.add(flipped.toString());
     } catch {
         // ignore malformed URLs when flipping protocol
@@ -98,19 +120,120 @@ function buildFeedUrlVariants(url: string): string[] {
 }
 
 function buildProxyUrls(targetUrl: string, forceRefresh: boolean): string[] {
-    const params = `?url=${encodeURIComponent(targetUrl)}${forceRefresh ? '&refresh=true' : ''}`;
-    
+    const params = `?url=${encodeURIComponent(targetUrl)}${forceRefresh ? "&refresh=true" : ""}`;
+
     // Use explicit FEED_PROXY_BASE or default to current origin's /api/fetch-feed
-    const proxyBase = FEED_PROXY_BASE || (typeof window !== 'undefined' ? window.location.origin : '');
-    const url = proxyBase ? `${proxyBase.replace(/\/+$/, '')}/api/fetch-feed${params}` : '';
-    
+    const proxyBase =
+        FEED_PROXY_BASE || (typeof window !== "undefined" ? window.location.origin : "");
+    const url = proxyBase ? `${proxyBase.replace(/\/+$/, "")}/api/fetch-feed${params}` : "";
+
     return url ? [url] : [];
 }
 
 function looksLikeHtml(text: string, contentType: string | null): boolean {
-    if (contentType && contentType.toLowerCase().includes('text/html')) return true;
+    if (contentType && contentType.toLowerCase().includes("text/html")) return true;
     const trimmed = text.trimStart().toLowerCase();
-    return trimmed.startsWith('<!doctype') || trimmed.startsWith('<html');
+    return trimmed.startsWith("<!doctype") || trimmed.startsWith("<html");
+}
+
+// Parse RSS/Atom feed directly from XML (client-side)
+function parseFeedXml(xmlText: string) {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+
+    // Check for parser errors
+    const parseError = xmlDoc.querySelector("parsererror");
+    if (parseError) {
+        throw new Error("Invalid XML format");
+    }
+
+    const rssChannel = xmlDoc.querySelector("channel");
+    const atomFeed = xmlDoc.querySelector("feed");
+    const rdfChannel = xmlDoc.querySelector("rdf\\:channel, channel");
+
+    const channel = rssChannel || atomFeed || rdfChannel;
+
+    if (!channel) {
+        throw new Error("No feed channel found");
+    }
+
+    const title = channel.querySelector("title")?.textContent || "";
+    const link =
+        channel.querySelector("link")?.textContent ||
+        channel.querySelector('link[rel="alternate"]')?.getAttribute("href") ||
+        "";
+    const description = channel.querySelector("description, subtitle")?.textContent || "";
+
+    const items = Array.from(channel.querySelectorAll("item, entry")).map((item) => {
+        const itemTitle = item.querySelector("title")?.textContent || "";
+        const itemLink =
+            item.querySelector("link")?.textContent ||
+            item.querySelector('link[rel="alternate"]')?.getAttribute("href") ||
+            item.querySelector("guid")?.textContent ||
+            "";
+        const guid =
+            item.querySelector("guid")?.textContent || item.querySelector("id")?.textContent || "";
+        const content =
+            item.querySelector("content\\:encoded, content, description")?.textContent || "";
+        const summary = item.querySelector("description, summary")?.textContent || "";
+        const pubDate = item.querySelector("pubDate, published, updated")?.textContent || "";
+        const creator = item.querySelector("creator, dc\\:creator, author")?.textContent || "";
+
+        // Parse date to ISO format
+        let isoDate = "";
+        if (pubDate) {
+            const d = new Date(pubDate);
+            if (!Number.isNaN(d.getTime())) {
+                isoDate = d.toISOString();
+            }
+        }
+
+        return {
+            title: itemTitle,
+            link: itemLink,
+            guid,
+            "content:encoded": content,
+            content: content || summary,
+            summary,
+            pubDate,
+            isoDate: isoDate || new Date().toISOString(),
+            "dc:creator": creator,
+            author: creator,
+        };
+    });
+
+    return {
+        title,
+        link,
+        description,
+        items,
+    };
+}
+
+// Direct client-side fetch (bypasses proxy, handles CORS)
+async function fetchFeedDirect(url: string): Promise<any> {
+    const response = await fetch(url, {
+        headers: {
+            "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+            Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, */*;q=0.9",
+        },
+        signal: AbortSignal.timeout(RSS_CONFIG.FETCH_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const text = await response.text();
+
+    // Check if we got HTML instead of XML (likely CORS error or blocked)
+    if (looksLikeHtml(text, response.headers.get("content-type"))) {
+        throw new Error(`CORS_BLOCKED`);
+    }
+
+    // Parse the XML feed
+    return parseFeedXml(text);
 }
 
 export async function fetchFeed(
@@ -129,43 +252,79 @@ export async function fetchFeed(
         let lastError: any;
         const candidates = buildFeedUrlVariants(url);
 
+        // Check if user prefers direct fetch mode (for desktop apps without server)
+        const settings = typeof window !== "undefined" ? (userSettings as any).__value || {} : {};
+        const useDirectFetch = settings.useDirectFetch || false;
+
         for (const candidate of candidates) {
             let candidateError: any;
 
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
-                const proxyUrls = buildProxyUrls(candidate, forceRefresh);
-
-                if (proxyUrls.length === 0) {
-                    candidateError = new Error('No feed proxy configured (VITE_FEED_PROXY_BASE or same-origin /api/fetch-feed)');
-                    lastError = candidateError;
-                    break;
-                }
-
                 try {
-                    for (const proxyUrl of proxyUrls) {
+                    // Try direct fetch first if enabled (works offline, bypasses CORS-capable servers)
+                    if (useDirectFetch) {
                         try {
-                            const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), RSS_CONFIG.FETCH_TIMEOUT_MS);
-                            let response: Response;
-                            try {
-                                response = await fetch(proxyUrl, { signal: controller.signal });
-                            } finally {
-                                clearTimeout(timeoutId);
-                            }
-                            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                            
-                            let text = await response.text();
-                            if (looksLikeHtml(text, response.headers.get('content-type'))) {
-                                throw new Error('Proxy returned HTML (feed proxy likely missing in production)');
-                            }
+                            logger.info(`Using direct fetch for ${candidate}`, "rss");
+                            return await fetchFeedDirect(candidate);
+                        } catch (directErr: any) {
+                            const isCorsBlocked = directErr.message === "CORS_BLOCKED";
 
-                            // Parse via server-side API
-                             const feedData = JSON.parse(text);
-                             return feedData;
-                        } catch (proxyErr) {
-                            candidateError = proxyErr;
-                            lastError = proxyErr;
-                            continue;
+                            if (isCorsBlocked) {
+                                logger.warn(
+                                    `CORS blocked for ${candidate}, this feed requires a proxy server`,
+                                    "rss"
+                                );
+                                candidateError = new Error(
+                                    `This feed provider (${new URL(candidate).hostname}) blocks direct browser access due to CORS policy. ` +
+                                        `Switch off "Direct Fetch Mode" in settings to use the proxy, or try a different feed.`
+                                );
+                            } else {
+                                candidateError = directErr;
+                            }
+                            lastError = candidateError;
+                        }
+                    } else {
+                        // Use proxy (default mode, works with web-deployed app)
+                        const proxyUrls = buildProxyUrls(candidate, forceRefresh);
+
+                        if (proxyUrls.length === 0) {
+                            candidateError = new Error(
+                                "No feed proxy configured (VITE_FEED_PROXY_BASE or same-origin /api/fetch-feed)"
+                            );
+                            lastError = candidateError;
+                            break;
+                        }
+
+                        for (const proxyUrl of proxyUrls) {
+                            try {
+                                const controller = new AbortController();
+                                const timeoutId = setTimeout(
+                                    () => controller.abort(),
+                                    RSS_CONFIG.FETCH_TIMEOUT_MS
+                                );
+                                let response: Response;
+                                try {
+                                    response = await fetch(proxyUrl, { signal: controller.signal });
+                                } finally {
+                                    clearTimeout(timeoutId);
+                                }
+                                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                                let text = await response.text();
+                                if (looksLikeHtml(text, response.headers.get("content-type"))) {
+                                    throw new Error(
+                                        "Proxy returned HTML (feed proxy likely missing in production)"
+                                    );
+                                }
+
+                                // Parse via server-side API
+                                const feedData = JSON.parse(text);
+                                return feedData;
+                            } catch (proxyErr) {
+                                candidateError = proxyErr;
+                                lastError = proxyErr;
+                                continue;
+                            }
                         }
                     }
                 } catch (e) {
@@ -173,9 +332,13 @@ export async function fetchFeed(
                     lastError = e;
                 }
 
-                const isRetryable = candidateError instanceof TypeError || (candidateError as any)?.message?.includes('HTTP');
+                const isRetryable =
+                    candidateError instanceof TypeError ||
+                    (candidateError as any)?.message?.includes("HTTP");
                 if (attempt < maxRetries && isRetryable) {
-                    await new Promise(resolve => setTimeout(resolve, RSS_CONFIG.BACKOFF_BASE_MS * Math.pow(2, attempt))); // Exponential backoff
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, RSS_CONFIG.BACKOFF_BASE_MS * Math.pow(2, attempt))
+                    );
                     continue;
                 }
                 break;
@@ -183,8 +346,8 @@ export async function fetchFeed(
 
             if (!candidateError) break;
         }
-        
-        logger.error(`Failed to fetch ${url} after ${maxRetries + 1} attempts`, lastError, 'rss');
+
+        logger.error(`Failed to fetch ${url} after ${maxRetries + 1} attempts`, lastError, "rss");
         throw lastError;
     })();
 
@@ -198,67 +361,82 @@ export async function fetchFeed(
     }
 }
 
-export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_LIMIT, forceRefresh = false) {
+export async function syncFeed(
+    feed: Feed,
+    unreadLimit = ARTICLE_CONFIG.UNREAD_LIMIT,
+    forceRefresh = false
+) {
     try {
         const data = await fetchFeed(feed.url, 2, forceRefresh);
-        
+
         // Update Feed Metadata
         await db.feeds.update(feed.id!, {
-            title: feed.title || data.title || 'Unknown Feed',
+            title: feed.title || data.title || "Unknown Feed",
             lastFetched: Date.now(),
-            error: undefined
+            error: undefined,
         });
 
         // Process all articles (convert to Article objects first)
         const items = Array.isArray(data.items) ? data.items : [];
         const processedArticles: Article[] = items.map((item: any) => {
-            const contentRaw = item['content:encoded'] || item.content || item.summary || '';
+            const contentRaw = item["content:encoded"] || item.content || item.summary || "";
             const cleanContent = sanitize(contentRaw);
             const resolvedLink = resolveItemLink(item, feed);
-            const commentsLink = typeof (item as any).comments === 'string' ? (item as any).comments : '';
-            const guidCandidate = [item.guid, (item as any).id, commentsLink, item.link, item.title].find(
-                (candidate): candidate is string => typeof candidate === 'string' && candidate.trim() !== ''
+            const commentsLink =
+                typeof (item as any).comments === "string" ? (item as any).comments : "";
+            const guidCandidate = [
+                item.guid,
+                (item as any).id,
+                commentsLink,
+                item.link,
+                item.title,
+            ].find(
+                (candidate): candidate is string =>
+                    typeof candidate === "string" && candidate.trim() !== ""
             );
-            
+
             // Stable fallback GUID: derive from link, title+date to avoid duplicates on each sync
-            const stableFallbackGuid = resolvedLink ||
-                `${(item.title ?? '').trim()}|${item.isoDate ?? ''}|${feed.id ?? ''}`;
+            const stableFallbackGuid =
+                resolvedLink ||
+                `${(item.title ?? "").trim()}|${item.isoDate ?? ""}|${feed.id ?? ""}`;
 
             return {
                 feedId: feed.id!,
                 guid: guidCandidate || stableFallbackGuid,
-                title: item.title || 'Untitled',
+                title: item.title || "Untitled",
                 link: resolvedLink,
                 content: cleanContent,
                 snippet: (() => {
-                    const snippetText = cleanContent.replace(/<[^>]*>?/gm, '');
+                    const snippetText = cleanContent.replace(/<[^>]*>?/gm, "");
                     return snippetText.length > ARTICLE_CONFIG.SNIPPET_LENGTH
-                        ? snippetText.substring(0, ARTICLE_CONFIG.SNIPPET_LENGTH) + '...'
+                        ? snippetText.substring(0, ARTICLE_CONFIG.SNIPPET_LENGTH) + "..."
                         : snippetText;
                 })(),
-                author: item.creator || item['dc:creator'],
+                author: item.creator || item["dc:creator"],
                 isoDate: item.isoDate || new Date().toISOString(),
                 receivedDate: Date.now(),
                 read: 0,
                 starred: 0,
-                words: tokenize(`${item.title || ''} ${cleanContent}`)
+                words: tokenize(`${item.title || ""} ${cleanContent}`),
             };
         });
 
         // Efficiently filter for NEW articles (check keys only)
         // This avoids loading full article content for entire history
-        const incomingGuids = processedArticles.map(a => a.guid);
-        
+        const incomingGuids = processedArticles.map((a) => a.guid);
+
         // Find which of these GUIDs already exist for this feed
         const existingGuidsSet = new Set<string>();
-        
+
         // Use the compound index and .keys() to only get the compound key tuples (avoids loading full article content)
         const existingKeys = await db.articles
-            .where('[feedId+guid]')
-            .anyOf(incomingGuids.map(g => [feed.id!, g]))
+            .where("[feedId+guid]")
+            .anyOf(incomingGuids.map((g) => [feed.id!, g]))
             .keys();
-            
-        (existingKeys as unknown as [number, string][]).forEach(([, guid]) => existingGuidsSet.add(guid));
+
+        (existingKeys as unknown as [number, string][]).forEach(([, guid]) =>
+            existingGuidsSet.add(guid)
+        );
 
         // Build lookups for backfilling missing links
         const processedByGuid = new Map<string, Article>();
@@ -283,29 +461,32 @@ export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_L
         // Backfill missing links on existing articles when we can now resolve them
         // Only fetch existing records that have a potential link update (processed article has a link)
         const existingGuidsWithNewLinks = processedArticles
-            .filter(a => a.link && existingGuidsSet.has(a.guid))
-            .map(a => a.guid);
+            .filter((a) => a.link && existingGuidsSet.has(a.guid))
+            .map((a) => a.guid);
 
         if (existingGuidsWithNewLinks.length > 0) {
             const existingRecordsForBackfill = await db.articles
-                .where('[feedId+guid]')
-                .anyOf(existingGuidsWithNewLinks.map(g => [feed.id!, g]))
+                .where("[feedId+guid]")
+                .anyOf(existingGuidsWithNewLinks.map((g) => [feed.id!, g]))
                 .toArray();
 
-            const existingByGuid = new Map(existingRecordsForBackfill.map(r => [r.guid, r]));
-            const articlesNeedingLinkUpdate = processedArticles.filter(a => {
+            const existingByGuid = new Map(existingRecordsForBackfill.map((r) => [r.guid, r]));
+            const articlesNeedingLinkUpdate = processedArticles.filter((a) => {
                 const existing = existingByGuid.get(a.guid);
-                return existing && (!existing.link || existing.link.trim() === '') && a.link;
+                return existing && (!existing.link || existing.link.trim() === "") && a.link;
             });
 
             if (articlesNeedingLinkUpdate.length > 0) {
                 await Promise.all(
-                    articlesNeedingLinkUpdate.map(article =>
-                        db.articles.where('[feedId+guid]').equals([feed.id!, article.guid]).modify({ link: article.link })
+                    articlesNeedingLinkUpdate.map((article) =>
+                        db.articles
+                            .where("[feedId+guid]")
+                            .equals([feed.id!, article.guid])
+                            .modify({ link: article.link })
                     )
                 );
 
-                articlesNeedingLinkUpdate.forEach(article => {
+                articlesNeedingLinkUpdate.forEach((article) => {
                     matchedProcessedGuids.add(article.guid);
                     const existing = existingByGuid.get(article.guid);
                     if (existing?.id !== undefined) updatedArticleIds.add(existing.id);
@@ -315,9 +496,9 @@ export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_L
 
         // If GUID changed between runs (e.g., we previously fell back to title), attempt a title-based backfill
         const missingLinkRecords = await db.articles
-            .where('feedId')
+            .where("feedId")
             .equals(feed.id!)
-            .and(r => !r.link || r.link.trim() === '')
+            .and((r) => !r.link || r.link.trim() === "")
             .toArray();
 
         const titleBackfills: { id: number; link: string }[] = [];
@@ -325,8 +506,10 @@ export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_L
         for (const record of missingLinkRecords) {
             if (record.id === undefined || updatedArticleIds.has(record.id)) continue;
 
-            const titleKey = (record.title || '').trim().toLowerCase();
-            const match = processedByGuid.get(record.guid) || (titleKey ? processedByTitle.get(titleKey) : undefined);
+            const titleKey = (record.title || "").trim().toLowerCase();
+            const match =
+                processedByGuid.get(record.guid) ||
+                (titleKey ? processedByTitle.get(titleKey) : undefined);
 
             if (match?.link && match.link !== record.link) {
                 titleBackfills.push({ id: record.id, link: match.link });
@@ -335,11 +518,13 @@ export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_L
         }
 
         if (titleBackfills.length > 0) {
-            await Promise.all(titleBackfills.map(update => db.articles.update(update.id, { link: update.link })));
+            await Promise.all(
+                titleBackfills.map((update) => db.articles.update(update.id, { link: update.link }))
+            );
         }
 
         const newArticles = processedArticles.filter(
-            a => !existingGuidsSet.has(a.guid) && !matchedProcessedGuids.has(a.guid)
+            (a) => !existingGuidsSet.has(a.guid) && !matchedProcessedGuids.has(a.guid)
         );
 
         // Auto-Archive Strategy:
@@ -354,11 +539,11 @@ export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_L
 
         const unreadArticles = articlesSortedByDate
             .slice(0, unreadLimit)
-            .map(a => ({ ...a, read: 0 as const })); // Mark as unread
+            .map((a) => ({ ...a, read: 0 as const })); // Mark as unread
 
         const archivedArticles = articlesSortedByDate
             .slice(unreadLimit)
-            .map(a => ({ ...a, read: 1 as const })); // Mark as read (auto-archived)
+            .map((a) => ({ ...a, read: 1 as const })); // Mark as read (auto-archived)
 
         const allNewArticles = [...unreadArticles, ...archivedArticles];
 
@@ -370,7 +555,7 @@ export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_L
         return {
             unread: unreadArticles.length,
             archived: archivedArticles.length,
-            total: allNewArticles.length
+            total: allNewArticles.length,
         };
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
@@ -382,41 +567,41 @@ export async function syncFeed(feed: Feed, unreadLimit = ARTICLE_CONFIG.UNREAD_L
 export async function addNewFeed(url: string, folderId?: number) {
     // 1. Fetch first to validate
     const data = await fetchFeed(url);
-    
+
     // 2. Add to DB
     const feedId = await db.feeds.add({
         url,
         title: data.title || new URL(url).hostname,
         website: data.link || url,
         folderId,
-        lastFetched: 0 // Trigger sync immediately after
+        lastFetched: 0, // Trigger sync immediately after
     });
 
     // 3. Sync content
     const feed = await db.feeds.get(feedId);
     if (feed) await syncFeed(feed);
-    
+
     return feedId;
 }
 
 export async function refreshAllFeeds(force = false) {
     const now = Date.now();
     if (!force && now - lastRefreshAllAt < RSS_CONFIG.REFRESH_ALL_MIN_INTERVAL_MS) {
-        logger.info('Skipping refreshAllFeeds: throttled', 'rss');
+        logger.info("Skipping refreshAllFeeds: throttled", "rss");
         return [];
     }
 
     lastRefreshAllAt = now;
     const feeds = await db.feeds.toArray();
     const results: PromiseSettledResult<{ unread: number; archived: number; total: number }>[] = [];
-    
+
     try {
         // Queue-based concurrency control
         const queue = [...feeds];
         let completed = 0;
-        
+
         refreshProgress.set({ completed: 0, total: feeds.length });
-        
+
         const worker = async () => {
             while (queue.length > 0) {
                 const feed = queue.shift();
@@ -429,29 +614,32 @@ export async function refreshAllFeeds(force = false) {
                     refreshProgress.set({ completed, total: feeds.length });
                     continue;
                 }
-                
+
                 try {
                     const result = await syncFeed(feed, 50, force);
                     feedFailureState.delete(key);
-                    results.push({ status: 'fulfilled', value: result });
+                    results.push({ status: "fulfilled", value: result });
                 } catch (err) {
                     const prevCount = failure?.count ?? 0;
                     const count = prevCount + 1;
-                    const backoffMs = Math.min(RSS_CONFIG.MAX_BACKOFF_MS, RSS_CONFIG.BACKOFF_BASE_MS * 60 * Math.pow(2, count - 1));
+                    const backoffMs = Math.min(
+                        RSS_CONFIG.MAX_BACKOFF_MS,
+                        RSS_CONFIG.BACKOFF_BASE_MS * 60 * Math.pow(2, count - 1)
+                    );
                     feedFailureState.set(key, { count, nextAllowed: Date.now() + backoffMs });
-                    results.push({ status: 'rejected', reason: err });
+                    results.push({ status: "rejected", reason: err });
                 }
-                
+
                 completed++;
                 refreshProgress.set({ completed, total: feeds.length });
             }
         };
-        
+
         // Start concurrency workers
         const workers = Array(Math.min(RSS_CONFIG.CONCURRENCY, feeds.length))
             .fill(null)
             .map(() => worker());
-        
+
         await Promise.all(workers);
         return results;
     } finally {

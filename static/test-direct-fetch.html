@@ -1,0 +1,171 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Test Direct Fetch</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                max-width: 800px;
+                margin: 50px auto;
+                padding: 20px;
+            }
+            .test {
+                margin: 10px 0;
+                padding: 10px;
+                border-radius: 5px;
+            }
+            .success {
+                background: #d4edda;
+                border: 1px solid #c3e6cb;
+            }
+            .failed {
+                background: #f8d7da;
+                border: 1px solid #f5c6cb;
+            }
+            .cors-blocked {
+                background: #fff3cd;
+                border: 1px solid #ffeaa7;
+            }
+            pre {
+                background: #f5f5f5;
+                padding: 10px;
+                border-radius: 3px;
+                overflow-x: auto;
+            }
+            button {
+                padding: 10px 20px;
+                background: #007bff;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+            }
+            button:hover {
+                background: #0056b3;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Client-Side RSS Fetch Test</h1>
+        <p>Testing direct browser fetch of RSS feeds (simulates desktop app behavior)</p>
+        <button onclick="runTests()">Run Tests</button>
+        <div id="results"></div>
+
+        <script>
+            const feeds = [
+                "https://feeds.feedburner.com/oreilly/radar",
+                "https://www.theverge.com/rss/index.xml",
+                "https://feeds.macrumors.com/MacRumors-All",
+                "https://rss.cnn.com/rss/edition.rss",
+                "https://feeds.simplecast.com/54nAGcIl", // HTTPBasic auth might fail
+                "https://www.w3.org/blog/news/feed", // W3C blog
+            ];
+
+            function parseFeedXml(xmlText) {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+
+                const parseError = xmlDoc.querySelector("parsererror");
+                if (parseError) {
+                    throw new Error("Invalid XML format");
+                }
+
+                const channel = xmlDoc.querySelector("channel, feed");
+                if (!channel) {
+                    throw new Error("No feed channel found");
+                }
+
+                const title = channel.querySelector("title")?.textContent || "";
+                const items = channel.querySelectorAll("item, entry").length;
+
+                return { title, items };
+            }
+
+            function looksLikeHtml(text, contentType) {
+                if (contentType && contentType.toLowerCase().includes("text/html")) return true;
+                const trimmed = text.trimStart().toLowerCase();
+                return trimmed.startsWith("<!doctype") || trimmed.startsWith("<html");
+            }
+
+            async function testFeed(url) {
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            "User-Agent":
+                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                            Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml",
+                        },
+                    });
+
+                    if (!response.ok) {
+                        return { url, status: "failed", reason: `HTTP ${response.status}` };
+                    }
+
+                    const text = await response.text();
+                    const contentType = response.headers.get("content-type") || "";
+
+                    if (looksLikeHtml(text, contentType)) {
+                        return {
+                            url,
+                            status: "cors-blocked",
+                            reason: "Returns HTML (CORS restriction)",
+                        };
+                    }
+
+                    const data = parseFeedXml(text);
+                    return { url, status: "success", title: data.title, items: data.items };
+                } catch (error) {
+                    return { url, status: "failed", reason: error.message };
+                }
+            }
+
+            async function runTests() {
+                const results = document.getElementById("results");
+                results.innerHTML = "<p>Testing...</p>";
+
+                let output = "";
+
+                for (const feed of feeds) {
+                    const result = await testFeed(feed);
+                    const hostname = new URL(feed).hostname;
+
+                    let className = "failed";
+                    if (result.status === "success") className = "success";
+                    if (result.status === "cors-blocked") className = "cors-blocked";
+
+                    output += `<div class="test ${className}">`;
+                    output += `<strong>${hostname}</strong><br>`;
+                    output += `Status: ${result.status}<br>`;
+                    if (result.title)
+                        output += `Title: ${result.title} (${result.items} items)<br>`;
+                    if (result.reason) output += `Reason: ${result.reason}`;
+                    output += `</div>`;
+                }
+
+                results.innerHTML = output;
+
+                // Add summary
+                const successCount = document.querySelectorAll(".success").length;
+                const corsCount = document.querySelectorAll(".cors-blocked").length;
+                const failedCount = document.querySelectorAll(".failed").length;
+
+                results.innerHTML += `
+                <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 5px;">
+                    <h3>Summary</h3>
+                    <p>✅ Success: ${successCount} | ⚠️ CORS Blocked: ${corsCount} | ❌ Failed: ${failedCount}</p>
+                    <p><strong>Conclusion:</strong> ${
+                        successCount >= feeds.length / 2
+                            ? "Direct fetch mode will work for most feeds. Some feeds may require proxy."
+                            : "Most feeds block direct fetch. Proxy mode recommended."
+                    }</p>
+                </div>
+            `;
+            }
+
+            // Auto-run on load
+            window.addEventListener("load", () => {
+                setTimeout(runTests, 500);
+            });
+        </script>
+    </body>
+</html>

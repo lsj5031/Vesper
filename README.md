@@ -45,6 +45,67 @@ An elegant, sophisticated, completely offline-first RSS reader that looks and fe
     npm run build
     ```
 
+## Desktop App
+
+Vesper can be packaged as a native desktop application using [Pake](https://github.com/tw93/Pake), turning it into a lightweight (~5MB) offline-capable app for macOS, Windows, and Linux.
+
+### Downloads
+
+Pre-built desktop packages are available on the [Releases](https://github.com/lsj5031/vesper/releases) page.
+
+### Build Your Own
+
+You can build a desktop app locally using Pake CLI:
+
+1. **Install Pake CLI:**
+
+    ```bash
+    npm install -g pake-cli
+    ```
+
+2. **Build and preview Vesper:**
+
+    ```bash
+    npm run build
+    npm run preview
+    # Runs on http://localhost:4173
+    ```
+
+3. **Package with Pake (in a new terminal):**
+
+    ```bash
+    pake http://localhost:4173 \
+      --name "Vesper RSS" \
+      --icon ./static/vesper.ico \
+      --width 1400 \
+      --height 900
+    ```
+
+4. **Install the generated app:**
+    - **macOS**: Open the `.dmg` file
+    - **Windows**: Run the `.msi` installer
+    - **Linux**: Install with `sudo dpkg -i Vesper-RSS_x86_64.deb`
+
+### Desktop App Settings
+
+For desktop apps (without the server-side proxy):
+
+1. Open Vesper
+2. Go to **Settings**
+3. Enable **Direct Fetch Mode**
+4. **Important:** Some feeds may fail due to CORS policy. If feeds don't load, disable Direct Fetch Mode and consider using a CORS proxy.
+
+### Automated Releases
+
+Pushing a version tag triggers automatic desktop app builds via GitHub Actions:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+This builds and releases desktop packages for all three platforms.
+
 ## Development
 
 ```bash
