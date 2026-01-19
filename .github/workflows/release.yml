@@ -92,10 +92,9 @@ jobs:
                     --icon "$ASSETS_DIR/$(basename ${{ matrix.icon_path }})" \
                     --use-local-file
                   
-                  # Copy output back
-                  find . -type f \( -name "*.dmg" -o -name "*.deb" \) -exec cp {} ${{ github.workspace }}/ \; 2>/dev/null || true
-                  find src-tauri/target -type f \( -name "*.dmg" -o -name "*.deb" \) -exec cp {} ${{ github.workspace }}/ \; 2>/dev/null || true
-                  find src-tauri/target -type d -name "*.app" -exec cp -r {} ${{ github.workspace }}/ \; 2>/dev/null || true
+                  # Copy output back - only final app files
+                  find src-tauri/target -type f -name "*.dmg" -exec cp {} ${{ github.workspace }}/VesperRSS.dmg \; 2>/dev/null || true
+                  find src-tauri/target -type f -name "*.deb" -exec cp {} ${{ github.workspace }}/vesper-rss.deb \; 2>/dev/null || true
 
             - name: Clone Pake and build desktop app (Windows)
               if: matrix.os == 'windows-latest'
@@ -119,24 +118,26 @@ jobs:
                   $iconName = Split-Path -Leaf "${{ matrix.icon_path }}"
                   node dist\cli.js "$ASSETS_DIR\index.html" --name VesperRSS --icon "$ASSETS_DIR\$iconName" --use-local-file
                   
-                  # Copy output back
-                  Get-ChildItem -Recurse -Filter "*.exe" | Copy-Item -Destination ${{ github.workspace }}\ -Force
+                  # Copy only the final VesperRSS exe (not build artifacts)
+                  $exe = Get-ChildItem -Path "src-tauri\target" -Recurse -Filter "VesperRSS*.exe" | Where-Object { $_.Name -notmatch "build" } | Select-Object -First 1
+                  if ($exe) {
+                      Copy-Item $exe.FullName -Destination "${{ github.workspace }}\VesperRSS.exe" -Force
+                  }
 
             - name: List build outputs
               shell: bash
               run: |
                   ls -lah
-                  find . -type f \( -name "*.dmg" -o -name "*.deb" -o -name "*.exe" -o -name "*.app" \) 2>/dev/null || true
+                  find . -maxdepth 1 -type f \( -name "*.dmg" -o -name "*.deb" -o -name "VesperRSS*.exe" \) 2>/dev/null || true
 
             - name: Upload artifacts
               uses: actions/upload-artifact@v4
               with:
                   name: vesper-rss-${{ matrix.platform }}
                   path: |
-                      *.dmg
-                      *.deb
-                      *.exe
-                      *.app
+                      VesperRSS*.dmg
+                      VesperRSS*.exe
+                      *vesper*.deb
                   if-no-files-found: warn
 
     release:
@@ -159,7 +160,10 @@ jobs:
             - name: Organize and rename artifacts
               run: |
                   mkdir -p ./release
-                  find ./artifacts -type f \( -name "*.dmg" -o -name "*.deb" -o -name "*.exe" \) -exec cp {} ./release/ \;
+                  # Only copy the specific app files, not build artifacts
+                  find ./artifacts -type f -name "VesperRSS*.dmg" -exec cp {} ./release/ \;
+                  find ./artifacts -type f -name "VesperRSS*.exe" -exec cp {} ./release/ \;
+                  find ./artifacts -type f -name "*vesper*.deb" -exec cp {} ./release/ \;
                   ls -lah ./release
 
             - name: Create checksums
