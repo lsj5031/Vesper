@@ -85,6 +85,11 @@
             </div>
             
             <div class="flex justify-between items-start">
+                <span class="text-sm" style={`color:${isDark ? 'var(--o3-color-palette-black-40)' : 'var(--o3-color-palette-black-70)'}`}>Toggle Sidebar</span>
+                <kbd class="border rounded px-2 py-1 text-xs font-mono text-o3-teal" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-black-10)'};border-color:${isDark ? 'var(--o3-color-palette-black-30)' : 'var(--o3-color-palette-black-20)'}`}>b</kbd>
+            </div>
+
+            <div class="flex justify-between items-start">
                 <span class="text-sm" style={`color:${isDark ? 'var(--o3-color-palette-black-40)' : 'var(--o3-color-palette-black-70)'}`}>Toggle Help</span>
                 <div class="flex gap-1">
                     <kbd class="border rounded px-2 py-1 text-xs font-mono text-o3-teal" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-black-10)'};border-color:${isDark ? 'var(--o3-color-palette-black-30)' : 'var(--o3-color-palette-black-20)'}`}>?</kbd>

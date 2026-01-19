@@ -3,7 +3,7 @@
     import HelpModal from '$lib/components/HelpModal.svelte';
     import SettingsModal from '$lib/components/SettingsModal.svelte';
     import OnboardingModal from '$lib/components/OnboardingModal.svelte';
-    import { showHelp, showSettings, themeMode } from '$lib/stores';
+    import { showHelp, showSettings, showSidebar, themeMode } from '$lib/stores';
 
     export let data;
     export let params;
@@ -19,6 +19,14 @@
         // Close help on Escape
         if (e.key === 'Escape' && $showHelp) {
             $showHelp = false;
+        }
+        
+        // Toggle sidebar on 'b'
+        if (e.key === 'b' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            const target = e.target as HTMLElement;
+            if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.isContentEditable) {
+                $showSidebar = !$showSidebar;
+            }
         }
     }
 

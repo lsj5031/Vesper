@@ -16,6 +16,9 @@ export const refreshProgress = writable<{ completed: number; total: number } | n
 // Help Modal
 export const showHelp = writable<boolean>(false);
 
+// Sidebar visibility (toggle with 'b' hotkey)
+export const showSidebar = writable<boolean>(true);
+
 // Settings Modal
 export const showSettings = writable<boolean>(false);
 
