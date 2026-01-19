@@ -84,13 +84,13 @@ jobs:
               if: matrix.os == 'windows-latest'
               shell: pwsh
               run: |
-                  pake http://localhost:4173 --name "Vesper RSS" --icon ${{ matrix.icon_path }} --targets exe
+                  pake http://localhost:4173 --name "Vesper RSS" --icon ${{ matrix.icon_path }} --keep-binary
 
             - name: List build outputs
               shell: bash
               run: |
                   ls -lah
-                  find . -type f \( -name "*.dmg" -o -name "*.deb" -o -name "*.msi" -o -name "*.exe" -o -name "*.app" \) 2>/dev/null || true
+                  find . -type f \( -name "*.dmg" -o -name "*.deb" -o -name "*.exe" -o -name "*.app" \) 2>/dev/null || true
 
             - name: Upload artifacts
               uses: actions/upload-artifact@v4
@@ -99,7 +99,6 @@ jobs:
                   path: |
                       *.dmg
                       *.deb
-                      *.msi
                       *.exe
                       *.app
                   if-no-files-found: warn
@@ -124,7 +123,7 @@ jobs:
             - name: Organize and rename artifacts
               run: |
                   mkdir -p ./release
-                  find ./artifacts -type f \( -name "*.dmg" -o -name "*.deb" -o -name "*.msi" -o -name "*.exe" \) -exec cp {} ./release/ \;
+                  find ./artifacts -type f \( -name "*.dmg" -o -name "*.deb" -o -name "*.exe" \) -exec cp {} ./release/ \;
                   ls -lah ./release
 
             - name: Create checksums
