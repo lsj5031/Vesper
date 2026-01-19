@@ -70,6 +70,8 @@ jobs:
             - name: Clone Pake and build desktop app (Linux/Mac)
               if: matrix.os != 'windows-latest'
               run: |
+                  set -e  # Exit on error
+                  
                   # Clone Pake repo
                   PAKE_DIR="${{ runner.temp }}/pake-build"
                   git clone --depth 1 https://github.com/tw93/Pake.git "$PAKE_DIR"
@@ -92,14 +94,21 @@ jobs:
                     --icon "$ASSETS_DIR/$(basename ${{ matrix.icon_path }})" \
                     --use-local-file
                   
-                  # Copy output back - only final app files
-                  find src-tauri/target -type f -name "*.dmg" -exec cp {} ${{ github.workspace }}/VesperRSS.dmg \; 2>/dev/null || true
-                  find src-tauri/target -type f -name "*.deb" -exec cp {} ${{ github.workspace }}/vesper-rss.deb \; 2>/dev/null || true
+                  # Debug: show what Pake produced (outputs to current working directory)
+                  echo "=== Pake build output (current directory) ==="
+                  ls -la
+                  find . -maxdepth 1 -type f \( -name "*.dmg" -o -name "*.deb" -o -name "*.AppImage" \) 2>/dev/null || echo "No app files in current dir"
+                  
+                  # Copy output back - Pake outputs to current working directory
+                  find . -maxdepth 1 -type f -name "*.dmg" -exec cp {} ${{ github.workspace }}/VesperRSS.dmg \;
+                  find . -maxdepth 1 -type f -name "*.deb" -exec cp {} ${{ github.workspace }}/vesper-rss.deb \;
 
             - name: Clone Pake and build desktop app (Windows)
               if: matrix.os == 'windows-latest'
               shell: pwsh
               run: |
+                  $ErrorActionPreference = "Stop"
+                  
                   $PAKE_DIR = "${{ runner.temp }}\pake-build"
                   git clone --depth 1 https://github.com/tw93/Pake.git $PAKE_DIR
                   cd $PAKE_DIR
@@ -118,10 +127,19 @@ jobs:
                   $iconName = Split-Path -Leaf "${{ matrix.icon_path }}"
                   node dist\cli.js "$ASSETS_DIR\index.html" --name VesperRSS --icon "$ASSETS_DIR\$iconName" --use-local-file
                   
-                  # Copy only the final VesperRSS exe (not build artifacts)
-                  $exe = Get-ChildItem -Path "src-tauri\target" -Recurse -Filter "VesperRSS*.exe" | Where-Object { $_.Name -notmatch "build" } | Select-Object -First 1
+                  # Debug: show what Pake produced (outputs to current working directory)
+                  Write-Host "=== Pake build output (current directory) ==="
+                  Get-ChildItem -Filter "*.exe"
+                  Get-ChildItem -Filter "*.msi"
+                  
+                  # Copy output - Pake outputs to current working directory
+                  $exe = Get-ChildItem -Filter "*.exe" | Where-Object { $_.Name -match "VesperRSS" } | Select-Object -First 1
                   if ($exe) {
                       Copy-Item $exe.FullName -Destination "${{ github.workspace }}\VesperRSS.exe" -Force
+                  }
+                  $msi = Get-ChildItem -Filter "*.msi" | Select-Object -First 1
+                  if ($msi) {
+                      Copy-Item $msi.FullName -Destination "${{ github.workspace }}\VesperRSS.msi" -Force
                   }
 
             - name: List build outputs
@@ -137,6 +155,7 @@ jobs:
                   path: |
                       VesperRSS*.dmg
                       VesperRSS*.exe
+                      VesperRSS*.msi
                       *vesper*.deb
                   if-no-files-found: warn
 
@@ -163,6 +182,7 @@ jobs:
                   # Only copy the specific app files, not build artifacts
                   find ./artifacts -type f -name "VesperRSS*.dmg" -exec cp {} ./release/ \;
                   find ./artifacts -type f -name "VesperRSS*.exe" -exec cp {} ./release/ \;
+                  find ./artifacts -type f -name "VesperRSS*.msi" -exec cp {} ./release/ \;
                   find ./artifacts -type f -name "*vesper*.deb" -exec cp {} ./release/ \;
                   ls -lah ./release
 
