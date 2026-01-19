@@ -68,6 +68,21 @@
                 <span class="text-sm" style={`color:${isDark ? 'var(--o3-color-palette-black-40)' : 'var(--o3-color-palette-black-70)'}`}>Refresh All Feeds</span>
                 <kbd class="border rounded px-2 py-1 text-xs font-mono text-o3-teal" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-black-10)'};border-color:${isDark ? 'var(--o3-color-palette-black-30)' : 'var(--o3-color-palette-black-20)'}`}>r</kbd>
             </div>
+
+            <div class="flex justify-between items-start">
+                <span class="text-sm" style={`color:${isDark ? 'var(--o3-color-palette-black-40)' : 'var(--o3-color-palette-black-70)'}`}>Toggle All / Unread Filter</span>
+                <kbd class="border rounded px-2 py-1 text-xs font-mono text-o3-teal" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-black-10)'};border-color:${isDark ? 'var(--o3-color-palette-black-30)' : 'var(--o3-color-palette-black-20)'}`}>u</kbd>
+            </div>
+
+            <div class="flex justify-between items-start">
+                <span class="text-sm" style={`color:${isDark ? 'var(--o3-color-palette-black-40)' : 'var(--o3-color-palette-black-70)'}`}>Go to Starred Articles</span>
+                <kbd class="border rounded px-2 py-1 text-xs font-mono text-o3-teal" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-black-10)'};border-color:${isDark ? 'var(--o3-color-palette-black-30)' : 'var(--o3-color-palette-black-20)'}`}>*</kbd>
+            </div>
+
+            <div class="flex justify-between items-start">
+                <span class="text-sm" style={`color:${isDark ? 'var(--o3-color-palette-black-40)' : 'var(--o3-color-palette-black-70)'}`}>Go to All Articles</span>
+                <kbd class="border rounded px-2 py-1 text-xs font-mono text-o3-teal" style={`background:${isDark ? 'var(--o3-color-palette-black-90)' : 'var(--o3-color-palette-black-10)'};border-color:${isDark ? 'var(--o3-color-palette-black-30)' : 'var(--o3-color-palette-black-20)'}`}>a</kbd>
+            </div>
             
             <div class="flex justify-between items-start">
                 <span class="text-sm" style={`color:${isDark ? 'var(--o3-color-palette-black-40)' : 'var(--o3-color-palette-black-70)'}`}>Toggle Help</span>

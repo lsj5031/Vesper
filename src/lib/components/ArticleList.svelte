@@ -356,9 +356,6 @@ function handleListKeydown(e: KeyboardEvent) {
         return;
     }
 
-    const articles: Article[] = $articlesStore || [];
-    if (articles.length === 0) return;
-
     // Refresh all feeds on 'r'
     if (e.key === "r" || e.key === "R") {
         if (!$refreshProgress) {
@@ -366,6 +363,30 @@ function handleListKeydown(e: KeyboardEvent) {
         }
         return;
     }
+
+    // Toggle all/unread filter on 'u'
+    if (e.key === "u") {
+        filterStatus = filterStatus === "all" ? "unread" : "all";
+        e.preventDefault();
+        return;
+    }
+
+    // Jump to starred articles on '*'
+    if (e.key === "*") {
+        $selectedFeedId = "starred";
+        e.preventDefault();
+        return;
+    }
+
+    // Jump to all articles on 'a'
+    if (e.key === "a") {
+        $selectedFeedId = "all";
+        e.preventDefault();
+        return;
+    }
+
+    const articles: Article[] = $articlesStore || [];
+    if (articles.length === 0) return;
 
     // Top (gg) and Bottom (G)
     if (e.key === "G") {
