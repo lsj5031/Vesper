@@ -123,8 +123,10 @@ function buildProxyUrls(targetUrl: string, forceRefresh: boolean): string[] {
     const params = `?url=${encodeURIComponent(targetUrl)}${forceRefresh ? "&refresh=true" : ""}`;
 
     // Use explicit FEED_PROXY_BASE or default to current origin's /api/fetch-feed
-    const proxyBase =
-        FEED_PROXY_BASE || (typeof window !== "undefined" ? window.location.origin : "");
+    // Guard against file:// or localhost origins (desktop apps)
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const isBadOrigin = origin.startsWith("file:") || origin.includes("localhost");
+    const proxyBase = FEED_PROXY_BASE || (!isBadOrigin ? origin : "");
     const url = proxyBase ? `${proxyBase.replace(/\/+$/, "")}/api/fetch-feed${params}` : "";
 
     return url ? [url] : [];

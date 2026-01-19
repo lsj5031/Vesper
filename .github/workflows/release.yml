@@ -53,38 +53,74 @@ jobs:
                   sudo apt-get update
                   sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
 
-            - name: Build production bundle
+            - name: Build production bundle (desktop)
               run: npm run build
+              env:
+                  BUILD_TARGET: desktop
+                  VITE_FEED_PROXY_BASE: "https://vesper.pages.dev"
 
-            - name: Install serve and Pake CLI
-              run: |
-                  npm install -g serve pake-cli
+            - name: Install Rust
+              uses: dtolnay/rust-toolchain@stable
 
-            - name: Start static file server (Linux/Mac)
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 9
+
+            - name: Clone Pake and build desktop app (Linux/Mac)
               if: matrix.os != 'windows-latest'
               run: |
-                  serve .svelte-kit/output/client -l 4173 &
-                  sleep 5
+                  # Clone Pake repo
+                  PAKE_DIR="${{ runner.temp }}/pake-build"
+                  git clone --depth 1 https://github.com/tw93/Pake.git "$PAKE_DIR"
+                  cd "$PAKE_DIR"
+                  pnpm install
+                  pnpm run cli:build
+                  
+                  # Ensure dist directory exists (workaround for Pake bug)
+                  mkdir -p dist
+                  
+                  # Copy our assets to a completely separate location outside pake dir
+                  ASSETS_DIR="/tmp/vesper-web-assets"
+                  mkdir -p "$ASSETS_DIR"
+                  cp -r ${{ github.workspace }}/build/* "$ASSETS_DIR/"
+                  cp ${{ github.workspace }}/${{ matrix.icon_path }} "$ASSETS_DIR/"
+                  
+                  # Run pake - point to index.html file directly
+                  node dist/cli.js "$ASSETS_DIR/index.html" \
+                    --name VesperRSS \
+                    --icon "$ASSETS_DIR/$(basename ${{ matrix.icon_path }})" \
+                    --use-local-file
+                  
+                  # Copy output back
+                  find . -type f \( -name "*.dmg" -o -name "*.deb" \) -exec cp {} ${{ github.workspace }}/ \; 2>/dev/null || true
+                  find src-tauri/target -type f \( -name "*.dmg" -o -name "*.deb" \) -exec cp {} ${{ github.workspace }}/ \; 2>/dev/null || true
+                  find src-tauri/target -type d -name "*.app" -exec cp -r {} ${{ github.workspace }}/ \; 2>/dev/null || true
 
-            - name: Start static file server (Windows)
+            - name: Clone Pake and build desktop app (Windows)
               if: matrix.os == 'windows-latest'
               shell: pwsh
               run: |
-                  Start-Process -WindowStyle Hidden -FilePath "cmd" -ArgumentList "/c serve .svelte-kit\output\client -l 4173"
-                  Start-Sleep -Seconds 10
-
-            - name: Build desktop app (Linux/Mac)
-              if: matrix.os != 'windows-latest'
-              run: |
-                  pake http://localhost:4173 \
-                    --name "Vesper RSS" \
-                    --icon ${{ matrix.icon_path }}
-
-            - name: Build desktop app (Windows - portable EXE)
-              if: matrix.os == 'windows-latest'
-              shell: pwsh
-              run: |
-                  pake http://localhost:4173 --name "Vesper RSS" --icon ${{ matrix.icon_path }} --keep-binary
+                  $PAKE_DIR = "${{ runner.temp }}\pake-build"
+                  git clone --depth 1 https://github.com/tw93/Pake.git $PAKE_DIR
+                  cd $PAKE_DIR
+                  pnpm install
+                  pnpm run cli:build
+                  
+                  # Ensure dist directory exists
+                  New-Item -ItemType Directory -Force -Path dist
+                  
+                  # Copy our assets to a completely separate location
+                  $ASSETS_DIR = "C:\vesper-web-assets"
+                  New-Item -ItemType Directory -Force -Path $ASSETS_DIR
+                  Copy-Item -Recurse ${{ github.workspace }}\build\* $ASSETS_DIR\
+                  Copy-Item ${{ github.workspace }}\${{ matrix.icon_path }} $ASSETS_DIR\
+                  
+                  $iconName = Split-Path -Leaf "${{ matrix.icon_path }}"
+                  node dist\cli.js "$ASSETS_DIR\index.html" --name VesperRSS --icon "$ASSETS_DIR\$iconName" --use-local-file
+                  
+                  # Copy output back
+                  Get-ChildItem -Recurse -Filter "*.exe" | Copy-Item -Destination ${{ github.workspace }}\ -Force
 
             - name: List build outputs
               shell: bash
