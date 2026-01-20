@@ -340,22 +340,7 @@ function handleListKeydown(e: KeyboardEvent) {
         return;
     }
 
-    // Global Focus Switch: l -> Reader
-    // Only switch if we are currently active, or if we want to support grabbing focus?
-    // User said "switch focus". Usually implies h/l works regardless?
-    // But let's assume strict mode: only active pane handles keys.
-
-    if ($activePane === "list") {
-        if (e.key === "l" || e.key === "ArrowRight") {
-            activePane.set("reader");
-            e.preventDefault();
-            return;
-        }
-    } else {
-        // If not active, ignore navigation
-        return;
-    }
-
+    // Global shortcuts - work regardless of active pane
     // Refresh all feeds on 'r'
     if (e.key === "r" || e.key === "R") {
         if (!$refreshProgress) {
@@ -382,6 +367,18 @@ function handleListKeydown(e: KeyboardEvent) {
     if (e.key === "a") {
         $selectedFeedId = "all";
         e.preventDefault();
+        return;
+    }
+
+    // Pane-specific navigation - only when list is active
+    if ($activePane === "list") {
+        if (e.key === "l" || e.key === "ArrowRight") {
+            activePane.set("reader");
+            e.preventDefault();
+            return;
+        }
+    } else {
+        // If not active, ignore remaining list-specific navigation
         return;
     }
 
