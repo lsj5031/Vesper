@@ -116,6 +116,8 @@
 
 <div 
     bind:this={scrollContainer}
+    tabindex="-1"
+    on:focusin={() => activePane.set('reader')}
     class="h-full overflow-y-auto min-h-0 relative outline-none transition-shadow duration-200"
     class:ring-2={$activePane === 'reader'}
     class:ring-inset={$activePane === 'reader'}

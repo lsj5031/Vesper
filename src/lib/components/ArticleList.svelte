@@ -370,6 +370,50 @@ function handleListKeydown(e: KeyboardEvent) {
         return;
     }
 
+    // Toggle star on selected article (s) when list is active
+    if (
+        $activePane === "list" &&
+        (e.key === "s" || e.key === "S") &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey
+    ) {
+        if (typeof $selectedArticleId === "number") {
+            db.articles
+                .where("id")
+                .equals($selectedArticleId)
+                .modify((a) => {
+                    a.starred = a.starred === 1 ? 0 : 1;
+                })
+                .catch((err) => logger.error("Failed to toggle star", err, "ArticleList"));
+        }
+        e.preventDefault();
+        return;
+    }
+
+    // Open original link (o) when list is active
+    if (
+        $activePane === "list" &&
+        (e.key === "o" || e.key === "O") &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey
+    ) {
+        const articleId = $selectedArticleId;
+        if (typeof articleId === "number") {
+            db.articles
+                .get(articleId)
+                .then((article) => {
+                    if (article?.link) {
+                        window.open(article.link, "_blank");
+                    }
+                })
+                .catch((err) => logger.error("Failed to open article link", err, "ArticleList"));
+        }
+        e.preventDefault();
+        return;
+    }
+
     // Pane-specific navigation - only when list is active
     if ($activePane === "list") {
         if (e.key === "l" || e.key === "ArrowRight") {
@@ -456,6 +500,7 @@ function handleWindowClick(event: MouseEvent) {
 
 <div
     class="h-full flex flex-col transition-shadow duration-200"
+    on:focusin={() => activePane.set("list")}
     class:ring-2={$activePane === "list"}
     class:ring-inset={$activePane === "list"}
     class:ring-o3-teal={$activePane === "list"}
