@@ -18,11 +18,13 @@ import {
     refreshProgress,
     themeMode,
     activePane,
+    userSettings,
 } from "../stores";
 import { refreshAllFeeds, syncFeed } from "../rss";
 import { formatDistanceToNow } from "date-fns";
 import { tokenize } from "../search";
 import { logger } from "../logger";
+import { showConfirm } from "../confirm";
 
 let filterStatus: "all" | "unread" = "all";
 let selectedIds = new Set<number>();
@@ -179,7 +181,15 @@ onDestroy(() => {
 
 async function deleteCurrentFeed() {
     if (!currentFeed?.id) return;
-    if (!confirm(`Delete "${currentFeed.title}"? This action cannot be undone.`)) return;
+
+    const confirmed = await showConfirm({
+        title: "Delete Feed?",
+        message: `Delete "${currentFeed.title}"? This action cannot be undone.`,
+        confirmText: "Delete",
+        cancelText: "Cancel",
+        isDangerous: true,
+    });
+    if (!confirmed) return;
 
     const id = currentFeed.id;
     await db.transaction("rw", db.feeds, db.articles, async () => {
@@ -196,6 +206,28 @@ async function retryCurrentFeed() {
     } catch (e) {
         logger.error("Retry failed", e, "ArticleList");
     }
+}
+
+async function enableDirectFetchAndRetry() {
+    if (!currentFeed?.id) return;
+    // Enable Direct Fetch Mode
+    userSettings.update((settings) => ({
+        ...settings,
+        useDirectFetch: true,
+    }));
+    // Retry with override to ensure Direct Fetch is used immediately
+    try {
+        await syncFeed(currentFeed, 50, true, true);
+    } catch (e) {
+        logger.error("Enable Direct Fetch & Retry failed", e, "ArticleList");
+    }
+}
+
+// Check if error is about proxy availability
+function isProxyError(error: string | undefined): boolean {
+    return Boolean(
+        error?.includes("Feed proxy not available") || error?.includes("No feed proxy configured")
+    );
 }
 
 // Helper for date
@@ -520,13 +552,22 @@ function handleWindowClick(event: MouseEvent) {
                     <p class="text-sm opacity-90 break-words">{currentFeed.error}</p>
                 </div>
             </div>
-            <div class="flex gap-2 pl-6">
-                <button
-                    class="px-3 py-1 bg-white text-o3-claret text-xs font-bold uppercase tracking-wider hover:bg-o3-white"
-                    on:click={retryCurrentFeed}
-                >
-                    Retry
-                </button>
+            <div class="flex gap-2 pl-6 flex-wrap">
+                {#if isProxyError(currentFeed.error) && !$userSettings.useDirectFetch}
+                    <button
+                        class="px-3 py-1 bg-o3-teal text-white text-xs font-bold uppercase tracking-wider hover:bg-o3-teal/80"
+                        on:click={enableDirectFetchAndRetry}
+                    >
+                        Enable Direct Fetch & Retry
+                    </button>
+                {:else}
+                    <button
+                        class="px-3 py-1 bg-white text-o3-claret text-xs font-bold uppercase tracking-wider hover:bg-o3-white"
+                        on:click={retryCurrentFeed}
+                    >
+                        Retry
+                    </button>
+                {/if}
                 <button
                     class="px-3 py-1 bg-o3-black-20 text-white text-xs font-bold uppercase tracking-wider hover:bg-o3-black-40"
                     on:click={deleteCurrentFeed}
@@ -776,7 +817,12 @@ function handleWindowClick(event: MouseEvent) {
             {#each $articlesStore as article, i (article.id)}
                 <div
                     id={"article-list-item-" + article.id}
-                    in:fly={{ y: 20, duration: 400, delay: Math.min(i * 30, 300), easing: quintOut }}
+                    in:fly={{
+                        y: 20,
+                        duration: 400,
+                        delay: Math.min(i * 30, 300),
+                        easing: quintOut,
+                    }}
                     class="relative w-full flex items-stretch border-b group transition-colors duration-200"
                     class:bg-o3-black-80={$selectedArticleId === article.id &&
                         $themeMode === "dark"}

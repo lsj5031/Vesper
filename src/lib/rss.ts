@@ -2,10 +2,15 @@ import DOMPurify from "dompurify";
 import { db, type Feed, type Article } from "./db";
 import { tokenize } from "./search";
 import { refreshProgress } from "./stores";
+import { get } from "svelte/store";
 import { logger } from "./logger";
 
 import { RSS_CONFIG, ARTICLE_CONFIG } from "./config";
 import { userSettings } from "./stores";
+
+type UserSettings = {
+    useDirectFetch?: boolean;
+};
 const FEED_PROXY_BASE = (import.meta.env.VITE_FEED_PROXY_BASE || "").trim();
 const inFlightFeedRequests = new Map<string, Promise<any>>();
 const feedFailureState = new Map<string, { count: number; nextAllowed: number }>();
@@ -241,7 +246,8 @@ async function fetchFeedDirect(url: string): Promise<any> {
 export async function fetchFeed(
     url: string,
     maxRetries = RSS_CONFIG.MAX_FETCH_RETRIES,
-    forceRefresh = false
+    forceRefresh = false,
+    overrideUseDirectFetch?: boolean
 ) {
     const cacheKey = normalizeFeedUrl(url);
 
@@ -255,8 +261,9 @@ export async function fetchFeed(
         const candidates = buildFeedUrlVariants(url);
 
         // Check if user prefers direct fetch mode (for desktop apps without server)
-        const settings = typeof window !== "undefined" ? (userSettings as any).__value || {} : {};
-        const useDirectFetch = settings.useDirectFetch || false;
+        // Allow override for immediate retry after enabling Direct Fetch Mode
+        const settings: UserSettings = typeof window !== "undefined" ? get(userSettings) : {};
+        const useDirectFetch = overrideUseDirectFetch ?? settings.useDirectFetch ?? false;
 
         for (const candidate of candidates) {
             let candidateError: any;
@@ -291,7 +298,7 @@ export async function fetchFeed(
 
                         if (proxyUrls.length === 0) {
                             candidateError = new Error(
-                                "No feed proxy configured (VITE_FEED_PROXY_BASE or same-origin /api/fetch-feed)"
+                                "Feed proxy not available. Enable 'Direct Fetch Mode' in Settings to fetch feeds directly, or set VITE_FEED_PROXY_BASE environment variable."
                             );
                             lastError = candidateError;
                             break;
@@ -366,10 +373,11 @@ export async function fetchFeed(
 export async function syncFeed(
     feed: Feed,
     unreadLimit = ARTICLE_CONFIG.UNREAD_LIMIT,
-    forceRefresh = false
+    forceRefresh = false,
+    overrideUseDirectFetch?: boolean
 ) {
     try {
-        const data = await fetchFeed(feed.url, 2, forceRefresh);
+        const data = await fetchFeed(feed.url, 2, forceRefresh, overrideUseDirectFetch);
 
         // Update Feed Metadata
         await db.feeds.update(feed.id!, {

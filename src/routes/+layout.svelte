@@ -1,42 +1,59 @@
 <script lang="ts">
-    import '../app.postcss';
-    import HelpModal from '$lib/components/HelpModal.svelte';
-    import SettingsModal from '$lib/components/SettingsModal.svelte';
-    import OnboardingModal from '$lib/components/OnboardingModal.svelte';
-    import { showHelp, showSettings, showSidebar, themeMode } from '$lib/stores';
+import "../app.postcss";
+import HelpModal from "$lib/components/HelpModal.svelte";
+import SettingsModal from "$lib/components/SettingsModal.svelte";
+import OnboardingModal from "$lib/components/OnboardingModal.svelte";
+import ConfirmModal from "$lib/components/ConfirmModal.svelte";
+import { showHelp, showSettings, showSidebar, showArticleList, themeMode } from "$lib/stores";
 
-    export let data;
-    export let params;
-    export let form;
-    const _kitProps = { data, params, form };
+export let data;
+export let params;
+export let form;
+const _kitProps = { data, params, form };
 
-    function handleGlobalKeydown(e: KeyboardEvent) {
-        // Toggle help on '?' or Shift+'/'
-        if (e.key === '?' || (e.shiftKey && e.key === '/')) {
-            $showHelp = !$showHelp;
-        }
-        
-        // Close help on Escape
-        if (e.key === 'Escape' && $showHelp) {
-            $showHelp = false;
-        }
-        
-        // Toggle sidebar on 'b'
-        if (e.key === 'b' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-            const target = e.target as HTMLElement;
-            if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.isContentEditable) {
-                $showSidebar = !$showSidebar;
-            }
+function handleGlobalKeydown(e: KeyboardEvent) {
+    // Toggle help on '?' or Shift+'/'
+    if (e.key === "?" || (e.shiftKey && e.key === "/")) {
+        $showHelp = !$showHelp;
+    }
+
+    // Close help on Escape
+    if (e.key === "Escape" && $showHelp) {
+        $showHelp = false;
+    }
+
+    // Toggle sidebar on 'b'
+    if (e.key === "b" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const target = e.target as HTMLElement;
+        if (
+            target.tagName !== "INPUT" &&
+            target.tagName !== "TEXTAREA" &&
+            !target.isContentEditable
+        ) {
+            $showSidebar = !$showSidebar;
         }
     }
 
-    // Apply theme (Tailwind dark mode + Origami data-theme hook)
-    $: if (typeof document !== 'undefined') {
-        const isDark = $themeMode === 'dark';
-        document.documentElement.classList.toggle('dark', isDark);
-        document.body.dataset.theme = isDark ? 'vesper' : 'vesper-light';
-        document.body.dataset.mode = $themeMode;
+    // Toggle article list on 'z' (Zen mode)
+    if (e.key === "z" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const target = e.target as HTMLElement;
+        if (
+            target.tagName !== "INPUT" &&
+            target.tagName !== "TEXTAREA" &&
+            !target.isContentEditable
+        ) {
+            $showArticleList = !$showArticleList;
+        }
     }
+}
+
+// Apply theme (Tailwind dark mode + Origami data-theme hook)
+$: if (typeof document !== "undefined") {
+    const isDark = $themeMode === "dark";
+    document.documentElement.classList.toggle("dark", isDark);
+    document.body.dataset.theme = isDark ? "vesper" : "vesper-light";
+    document.body.dataset.mode = $themeMode;
+}
 </script>
 
 <svelte:window on:keydown={handleGlobalKeydown} />
@@ -50,5 +67,7 @@
 {/if}
 
 <OnboardingModal />
+
+<ConfirmModal />
 
 <slot />

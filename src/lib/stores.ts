@@ -18,6 +18,8 @@ export const showHelp = writable<boolean>(false);
 
 // Sidebar visibility (toggle with 'b' hotkey)
 export const showSidebar = writable<boolean>(true);
+// Article list visibility (toggle with 'z' hotkey)
+export const showArticleList = writable<boolean>(true);
 
 // Settings Modal
 export const showSettings = writable<boolean>(false);
