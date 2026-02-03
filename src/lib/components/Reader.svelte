@@ -94,6 +94,13 @@ function handleKeydown(event: KeyboardEvent) {
         return;
     }
 
+    // Unsubscribe from feed (Shift+U key)
+    if (event.key === "U" && $currentFeed) {
+        unsubscribeFeed();
+        event.preventDefault();
+        return;
+    }
+
     // Scroll down page (space key)
     if (event.code === "Space" && $articleStore) {
         event.preventDefault();

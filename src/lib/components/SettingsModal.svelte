@@ -3,7 +3,7 @@ import { onMount, onDestroy } from "svelte";
 import { fade, scale } from "svelte/transition";
 import { quintOut } from "svelte/easing";
 import Dexie from "dexie";
-import { showSettings, themeMode, userSettings } from "../stores";
+import { showSettings, themeMode, userSettings, showHelp } from "../stores";
 import { importOPML, exportOPML } from "../opml";
 import { importBackup, exportBackup } from "../backup";
 import { addNewFeed } from "../rss";
@@ -209,6 +209,22 @@ async function handleBackupSelect(e: Event) {
                     }}
                 >
                     Switch to {$themeMode === "dark" ? "Day" : "Night"} Mode
+                </button>
+            </div>
+
+            <!-- Keyboard Shortcuts -->
+            <div class="space-y-2">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-o3-teal">
+                    Keyboard Shortcuts
+                </h3>
+                <button
+                    class="btn-vesper-secondary btn-vesper-small w-full"
+                    on:click={() => {
+                        $showHelp = true;
+                        $showSettings = false;
+                    }}
+                >
+                    View Shortcuts
                 </button>
             </div>
 
