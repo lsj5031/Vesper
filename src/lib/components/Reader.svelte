@@ -221,16 +221,20 @@ function scrollToTop() {
                     </h1>
 
                     <div
-                        class="flex items-center justify-between text-sm font-bold uppercase tracking-widest"
+                        class="flex items-center text-sm font-bold uppercase tracking-widest"
                         class:text-o3-black-40={$themeMode === "dark"}
                         class:text-o3-black-70={$themeMode !== "dark"}
                     >
-                        <span
-                            >By <span class="text-o3-teal border-b border-o3-teal"
-                                >{$articleStore.author || "Unknown"}</span
-                            ></span
+                        {#if typeof $articleStore.author === "string" && $articleStore.author.trim().length > 0}
+                            <span
+                                >By <span class="text-o3-teal border-b border-o3-teal"
+                                    >{$articleStore.author}</span
+                                ></span
+                            >
+                        {/if}
+                        <time class="ml-auto"
+                            >{format(new Date($articleStore.isoDate), "MMMM d, yyyy")}</time
                         >
-                        <time>{format(new Date($articleStore.isoDate), "MMMM d, yyyy")}</time>
                     </div>
 
                     <div class="mt-4">
