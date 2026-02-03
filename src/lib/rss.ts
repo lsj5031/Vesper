@@ -555,16 +555,20 @@ export async function syncFeed(
 }
 
 export async function addNewFeed(url: string, folderId?: number) {
-    // 1. Fetch first to validate
+    const normalizedUrl = normalizeFeedUrl(url);
+    const existingFeed = await db.feeds.where("url").equals(normalizedUrl).first();
+    if (existingFeed) {
+        throw new Error(`Feed already exists: ${normalizedUrl}`);
+    }
+
     const data = await fetchFeed(url);
 
-    // 2. Add to DB
     const feedId = await db.feeds.add({
-        url,
+        url: normalizedUrl,
         title: data.title || new URL(url).hostname,
         website: data.link || url,
         folderId,
-        lastFetched: 0, // Trigger sync immediately after
+        lastFetched: 0,
     });
 
     // 3. Sync content
