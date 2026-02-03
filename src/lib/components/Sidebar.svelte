@@ -285,10 +285,10 @@ onDestroy(() => clearInterval(refreshTimer));
                             <span class="truncate">{feed.title}</span>
                             <span class="flex items-center gap-1 shrink-0">
                                 {#if feed.id != null && $unreadCounts?.[feed.id]}
-                                    <span class="text-xs opacity-70">{$unreadCounts[feed.id]}</span>
-                                {/if}
-                                {#if isUpdating}
-                                    <span class="text-o3-teal animate-pulse">⟳</span>
+                                    <span
+                                        class="text-xs opacity-70 transition-opacity duration-200 group-hover:opacity-0"
+                                        >{$unreadCounts[feed.id]}</span
+                                    >
                                 {/if}
                             </span>
                         </button>
@@ -311,18 +311,28 @@ onDestroy(() => clearInterval(refreshTimer));
                                     <span class="o3-button-icon__label">Delete</span>
                                 </button>
                             {:else}
-                                <button
-                                    class="o3-button o3-button--ghost o3-button--small o3-button-icon o3-button-icon--refresh o3-button-icon--icon-only {feed.id &&
-                                    refreshingFeeds.has(feed.id)
-                                        ? 'animate-spin'
-                                        : ''}"
-                                    data-o3-theme={$themeMode === "dark" ? "inverse" : "standard"}
-                                    on:click={(e) => handleRefreshFeed(feed, e)}
-                                    disabled={feed.id ? refreshingFeeds.has(feed.id) : false}
-                                    title="Refresh Feed"
+                                {@const isFeedUpdating = feed.id
+                                    ? refreshingFeeds.has(feed.id) || isUpdating
+                                    : false}
+                                <div
+                                    class="{isFeedUpdating
+                                        ? 'opacity-100'
+                                        : 'opacity-0 group-hover:opacity-100'} transition-opacity duration-200"
                                 >
-                                    <span class="o3-button-icon__label">Refresh</span>
-                                </button>
+                                    <button
+                                        class="o3-button o3-button--ghost o3-button--small o3-button-icon o3-button-icon--refresh o3-button-icon--icon-only {isFeedUpdating
+                                            ? 'animate-spin'
+                                            : ''}"
+                                        data-o3-theme={$themeMode === "dark"
+                                            ? "inverse"
+                                            : "standard"}
+                                        on:click={(e) => handleRefreshFeed(feed, e)}
+                                        disabled={isFeedUpdating}
+                                        title="Refresh Feed"
+                                    >
+                                        <span class="o3-button-icon__label">Refresh</span>
+                                    </button>
+                                </div>
                             {/if}
                         </div>
                     </div>
@@ -373,10 +383,10 @@ onDestroy(() => clearInterval(refreshTimer));
                         <span class="truncate">{feed.title}</span>
                         <span class="flex items-center gap-1 shrink-0">
                             {#if feed.id != null && $unreadCounts?.[feed.id]}
-                                <span class="text-xs opacity-70">{$unreadCounts[feed.id]}</span>
-                            {/if}
-                            {#if isUpdating}
-                                <span class="text-o3-teal animate-pulse">⟳</span>
+                                <span
+                                    class="text-xs opacity-70 transition-opacity duration-200 group-hover:opacity-0"
+                                    >{$unreadCounts[feed.id]}</span
+                                >
                             {/if}
                         </span>
                     </button>
@@ -399,18 +409,26 @@ onDestroy(() => clearInterval(refreshTimer));
                                 <span class="o3-button-icon__label">Delete</span>
                             </button>
                         {:else}
-                            <button
-                                class="o3-button o3-button--ghost o3-button--small o3-button-icon o3-button-icon--refresh o3-button-icon--icon-only {feed.id &&
-                                refreshingFeeds.has(feed.id)
-                                    ? 'animate-spin'
-                                    : ''}"
-                                data-o3-theme={$themeMode === "dark" ? "inverse" : "standard"}
-                                on:click={(e) => handleRefreshFeed(feed, e)}
-                                disabled={feed.id ? refreshingFeeds.has(feed.id) : false}
-                                title="Refresh Feed"
+                            {@const isFeedUpdating = feed.id
+                                ? refreshingFeeds.has(feed.id) || isUpdating
+                                : false}
+                            <div
+                                class="{isFeedUpdating
+                                    ? 'opacity-100'
+                                    : 'opacity-0 group-hover:opacity-100'} transition-opacity duration-200"
                             >
-                                <span class="o3-button-icon__label">Refresh</span>
-                            </button>
+                                <button
+                                    class="o3-button o3-button--ghost o3-button--small o3-button-icon o3-button-icon--refresh o3-button-icon--icon-only {isFeedUpdating
+                                        ? 'animate-spin'
+                                        : ''}"
+                                    data-o3-theme={$themeMode === "dark" ? "inverse" : "standard"}
+                                    on:click={(e) => handleRefreshFeed(feed, e)}
+                                    disabled={isFeedUpdating}
+                                    title="Refresh Feed"
+                                >
+                                    <span class="o3-button-icon__label">Refresh</span>
+                                </button>
+                            </div>
                         {/if}
                     </div>
                 </div>
