@@ -149,6 +149,31 @@ $: isDark = $themeMode === "dark";
                 <span
                     class="text-sm"
                     style={`color:${isDark ? "var(--o3-color-palette-black-40)" : "var(--o3-color-palette-black-70)"}`}
+                    >Unsubscribe from Current Feed</span
+                >
+                <div class="flex gap-1">
+                    <kbd
+                        class="border rounded px-2 py-1 text-xs font-mono text-o3-teal"
+                        style={`background:${isDark ? "var(--o3-color-palette-black-90)" : "var(--o3-color-palette-black-10)"};border-color:${isDark ? "var(--o3-color-palette-black-30)" : "var(--o3-color-palette-black-20)"}`}
+                        >Shift</kbd
+                    >
+                    <span
+                        class="text-xs"
+                        style={`color:${isDark ? "var(--o3-color-palette-black-40)" : "var(--o3-color-palette-black-70)"}`}
+                        >+</span
+                    >
+                    <kbd
+                        class="border rounded px-2 py-1 text-xs font-mono text-o3-teal"
+                        style={`background:${isDark ? "var(--o3-color-palette-black-90)" : "var(--o3-color-palette-black-10)"};border-color:${isDark ? "var(--o3-color-palette-black-30)" : "var(--o3-color-palette-black-20)"}`}
+                        >u</kbd
+                    >
+                </div>
+            </div>
+
+            <div class="flex justify-between items-start">
+                <span
+                    class="text-sm"
+                    style={`color:${isDark ? "var(--o3-color-palette-black-40)" : "var(--o3-color-palette-black-70)"}`}
                     >Go to Starred Articles</span
                 >
                 <kbd
