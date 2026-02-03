@@ -127,11 +127,9 @@ function buildFeedUrlVariants(url: string): string[] {
 function buildProxyUrls(targetUrl: string, forceRefresh: boolean): string[] {
     const params = `?url=${encodeURIComponent(targetUrl)}${forceRefresh ? "&refresh=true" : ""}`;
 
-    // Use explicit FEED_PROXY_BASE or default to current origin's /api/fetch-feed
-    // Guard against file:// or localhost origins (desktop apps)
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const isBadOrigin = origin.startsWith("file:") || origin.includes("localhost");
-    const proxyBase = FEED_PROXY_BASE || (!isBadOrigin ? origin : "");
+    const isFileOrigin = origin.startsWith("file:");
+    const proxyBase = FEED_PROXY_BASE || (!isFileOrigin ? origin : "");
     const url = proxyBase ? `${proxyBase.replace(/\/+$/, "")}/api/fetch-feed${params}` : "";
 
     return url ? [url] : [];
@@ -537,25 +535,7 @@ export async function syncFeed(
             (a) => !existingGuidsSet.has(a.guid) && !matchedProcessedGuids.has(a.guid)
         );
 
-        // Auto-Archive Strategy:
-        // 1. Sort by date (newest first)
-        // 2. Top 50: Mark as unread (visible in inbox)
-        // 3. Rest: Mark as read (auto-archived)
-        const articlesSortedByDate = newArticles.sort((a, b) => {
-            const dateA = new Date(a.isoDate).getTime();
-            const dateB = new Date(b.isoDate).getTime();
-            return dateB - dateA; // Newest first
-        });
-
-        const unreadArticles = articlesSortedByDate
-            .slice(0, unreadLimit)
-            .map((a) => ({ ...a, read: 0 as const })); // Mark as unread
-
-        const archivedArticles = articlesSortedByDate
-            .slice(unreadLimit)
-            .map((a) => ({ ...a, read: 1 as const })); // Mark as read (auto-archived)
-
-        const allNewArticles = [...unreadArticles, ...archivedArticles];
+        const allNewArticles = newArticles.map((a) => ({ ...a, read: 0 as const }));
 
         // Bulk insert (optimized for large batches)
         if (allNewArticles.length > 0) {
@@ -563,8 +543,8 @@ export async function syncFeed(
         }
 
         return {
-            unread: unreadArticles.length,
-            archived: archivedArticles.length,
+            unread: allNewArticles.length,
+            archived: 0,
             total: allNewArticles.length,
         };
     } catch (err: unknown) {
