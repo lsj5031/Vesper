@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.6] - 2025-02-05
+
+### Added
+
+- **Enhanced Keyboard Navigation**: Comprehensive keyboard shortcuts including 'b' for sidebar toggle, Shift+u for help modal, and improved focus tracking
+- **Duplicate Prevention**: Explicit duplicate checks when adding new feeds and backup imports
+- **Zen Mode**: New zen mode for distraction-free reading
+- **Confirmation Dialogs**: Added confirmation dialogs for destructive actions
+- **Keyboard Shortcuts Link**: Direct access to keyboard shortcuts documentation
+
+### Changed
+
+- **Improved UX**: Consolidated refresh icons and enhanced user experience
+- **Author Display**: Conditionally hide author section when not available
+- **Auto-Archive Strategy**: Removed auto-archive limit and improved proxy support
+- **App Icons**: Updated app icons for better visual consistency
+
+### Fixed
+
+- **Desktop Builds**: Improved Pake build debugging and included MSI in release artifacts
+- **Release Artifacts**: Only include final app files, not build artifacts
+- **Windows Builds**: Proper static file serving on Windows using cmd shell
+- **Portable EXE**: Use --keep-binary for portable Windows EXE instead of MSI
+
+### Infrastructure
+
+- **Build Process**: Enhanced release workflow with better error handling
+- **Documentation**: Updated changelog and build documentation
+
 ## [0.0.2] - 2025-01-19
 
 ### Added
