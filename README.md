@@ -4,7 +4,7 @@
 
 An elegant, sophisticated, completely offline-first RSS reader that looks and feels exactly like reading the Financial Times in 2025.
 
-**🌐 Try Vesper Live:** [read.liu.nz](https://read.liu.nz)
+**🌐 Try Vesper Live:** [reader.liu.nz](https://reader.liu.nz)
 
 ![Vesper](./vesper.ico)
 
