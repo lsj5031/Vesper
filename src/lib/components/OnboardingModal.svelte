@@ -103,7 +103,7 @@
             class="border border-o3-teal p-8 shadow-2xl max-w-lg w-full rounded relative z-10"
             role="dialog"
             aria-modal="true"
-            style={`background:var(--vesper-panel)`}
+            style="background:var(--vesper-panel)"
         >
             <div class="mb-6 text-center">
                 <h2 class="text-3xl font-headline font-bold mb-3" style={`color:${isDark ? 'var(--o3-color-palette-white)' : 'var(--o3-color-palette-black-90)'}`}>Welcome to Vesper</h2>

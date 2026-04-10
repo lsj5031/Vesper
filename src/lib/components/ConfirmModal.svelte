@@ -68,7 +68,7 @@ function initAutofocus(node: HTMLElement) {
             aria-modal="true"
             aria-labelledby="confirm-title"
             aria-describedby="confirm-message"
-            style={`background:var(--vesper-panel)`}
+            style="background:var(--vesper-panel)"
             in:scale={{ start: 0.95, duration: 300, easing: quintOut }}
         >
             <div class="mb-6">

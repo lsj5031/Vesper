@@ -23,7 +23,7 @@ $: isDark = $themeMode === "dark";
         role="dialog"
         aria-modal="true"
         aria-labelledby="help-title"
-        style={`background:var(--vesper-panel)`}
+        style="background:var(--vesper-panel)"
         in:scale={{ start: 0.95, duration: 300, easing: quintOut }}
     >
         <div class="mb-6">

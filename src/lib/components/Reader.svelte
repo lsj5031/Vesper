@@ -40,7 +40,7 @@ $: {
     }
 }
 
-async function toggleStar(article: any) {
+async function toggleStar(article: Pick<Article, "id" | "starred">) {
     await db.articles.update(article.id!, { starred: article.starred ? 0 : 1 });
 }
 
@@ -251,7 +251,7 @@ function scrollToTop() {
                             <a
                                 href={$articleStore.link}
                                 target="_blank"
-                                rel="noreferrer"
+                                rel="external noopener noreferrer"
                                 class="text-xs text-o3-teal hover:text-o3-white transition-colors"
                             >
                                 Read Original ↗
@@ -264,6 +264,8 @@ function scrollToTop() {
 
                 <!-- Content -->
                 <div class="prose-vesper">
+                    <!-- RSS content is sanitized before storage in src/lib/rss.ts. -->
+                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                     {@html $articleStore.content}
                 </div>
 

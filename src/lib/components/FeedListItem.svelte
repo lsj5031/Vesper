@@ -6,7 +6,12 @@
     export let feed: Feed;
     export let isRefreshing = false;
 
-    const dispatch = createEventDispatcher();
+    const dispatch = createEventDispatcher<{
+        select: { feedId: number | undefined };
+        refreshStart: { feedId: number };
+        refreshError: { feedId: number; error: unknown };
+        refreshEnd: { feedId: number };
+    }>();
 
     async function handleRefresh(e: MouseEvent) {
         e.stopPropagation();

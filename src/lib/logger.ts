@@ -17,31 +17,35 @@ interface LogEntry {
 class Logger {
 	private isDevelopment = import.meta.env.DEV;
 
-	private formatMessage(level: LogLevel, message: string, context?: string): string {
-		const timestamp = new Date().toISOString();
-		const prefix = context ? `[${context}]` : '';
-		return `[${timestamp}] ${level.toUpperCase()}: ${prefix} ${message}`;
+	private formatMessage(entry: LogEntry): string {
+		const timestamp = entry.timestamp ?? new Date().toISOString();
+		const prefix = entry.context ? `[${entry.context}] ` : '';
+		return `[${timestamp}] ${entry.level.toUpperCase()}: ${prefix}${entry.message}`;
 	}
 
 	debug(message: string, context?: string): void {
 		if (this.isDevelopment) {
-			console.debug(this.formatMessage('debug', message, context));
+			const entry: LogEntry = { level: 'debug', message, context };
+			// eslint-disable-next-line no-console -- Centralized development logging belongs here.
+			console.debug(this.formatMessage(entry));
 		}
 	}
 
 	info(message: string, context?: string): void {
 		if (this.isDevelopment) {
-			console.info(this.formatMessage('info', message, context));
+			const entry: LogEntry = { level: 'info', message, context };
+			// eslint-disable-next-line no-console -- Centralized development logging belongs here.
+			console.info(this.formatMessage(entry));
 		}
 	}
 
 	warn(message: string, context?: string): void {
-		console.warn(this.formatMessage('warn', message, context));
+		console.warn(this.formatMessage({ level: 'warn', message, context }));
 	}
 
 	error(message: string, error?: Error | unknown, context?: string): void {
 		const errorMsg = error instanceof Error ? error.message : String(error);
-		console.error(this.formatMessage('error', `${message}: ${errorMsg}`, context));
+		console.error(this.formatMessage({ level: 'error', message: `${message}: ${errorMsg}`, context }));
 		if (error instanceof Error && this.isDevelopment) {
 			console.error(error.stack);
 		}

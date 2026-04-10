@@ -91,13 +91,16 @@ export const onRequest: PagesFunction = async ({ request }) => {
         };
 
         return new Response(text, { status: 200, headers });
-    } catch (err: any) {
-        console.error(`Failed to fetch feed ${feedUrl}:`, err?.message || err);
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        const name = err instanceof Error ? err.name : undefined;
 
-        if (err?.name === 'AbortError') {
+        console.error(`Failed to fetch feed ${feedUrl}:`, message);
+
+        if (name === 'AbortError') {
             return new Response('Feed request timeout after 10 seconds', { status: 504 });
         }
 
-        return new Response(`Failed to fetch feed: ${err?.message || 'unknown error'}`, { status: 502 });
+        return new Response(`Failed to fetch feed: ${message}`, { status: 502 });
     }
 };

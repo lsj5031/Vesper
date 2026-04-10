@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, type Article, type Feed, type Folder, type Settings } from "./db";
 import { tokenize } from "./search";
 
 export interface BackupProgress {
@@ -7,13 +7,110 @@ export interface BackupProgress {
     total: number;
 }
 
+type BackupFeed = {
+    id?: unknown;
+    url: string;
+    title?: unknown;
+    website?: unknown;
+    folderId?: unknown;
+    lastFetched?: unknown;
+    favicon?: unknown;
+    error?: unknown;
+};
+
+type BackupFolder = {
+    id?: unknown;
+    name: string;
+    collapsed?: unknown;
+};
+
+type BackupArticle = {
+    id?: unknown;
+    feedId: number;
+    guid: string;
+    title?: unknown;
+    link?: unknown;
+    content?: unknown;
+    snippet?: unknown;
+    author?: unknown;
+    isoDate?: unknown;
+    receivedDate?: unknown;
+    read?: unknown;
+    starred?: unknown;
+    words?: unknown;
+};
+
+type BackupSetting = {
+    key: string;
+    value?: unknown;
+};
+
 interface BackupData {
     version: number;
     timestamp: number;
-    feeds: Array<{ url: string; [key: string]: unknown }>;
-    folders: Array<{ name?: string; [key: string]: unknown }>;
-    articles: Array<{ feedId: number; guid: string; [key: string]: unknown }>;
-    settings: Array<{ key?: string; [key: string]: unknown }>;
+    feeds: BackupFeed[];
+    folders: BackupFolder[];
+    articles: BackupArticle[];
+    settings: BackupSetting[];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+}
+
+function normalizeFlag(value: unknown): 0 | 1 {
+    return value === 1 || value === true ? 1 : 0;
+}
+
+function normalizeBackupFeed(feed: BackupFeed): Feed {
+    return {
+        id: typeof feed.id === "number" ? feed.id : undefined,
+        url: feed.url,
+        title: typeof feed.title === "string" ? feed.title : feed.url,
+        website: typeof feed.website === "string" ? feed.website : feed.url,
+        folderId: typeof feed.folderId === "number" ? feed.folderId : undefined,
+        lastFetched: typeof feed.lastFetched === "number" ? feed.lastFetched : undefined,
+        favicon: typeof feed.favicon === "string" ? feed.favicon : undefined,
+        error: typeof feed.error === "string" ? feed.error : undefined,
+    };
+}
+
+function normalizeBackupFolder(folder: BackupFolder): Folder {
+    return {
+        id: typeof folder.id === "number" ? folder.id : undefined,
+        name: folder.name,
+        collapsed:
+            folder.collapsed === 0 || folder.collapsed === 1 ? folder.collapsed : undefined,
+    };
+}
+
+function normalizeBackupArticle(article: BackupArticle): Article {
+    return {
+        id: typeof article.id === "number" ? article.id : undefined,
+        feedId: article.feedId,
+        guid: article.guid,
+        title: typeof article.title === "string" ? article.title : "Untitled",
+        link: typeof article.link === "string" ? article.link : "",
+        content: typeof article.content === "string" ? article.content : "",
+        snippet: typeof article.snippet === "string" ? article.snippet : undefined,
+        author: typeof article.author === "string" ? article.author : undefined,
+        isoDate:
+            typeof article.isoDate === "string" ? article.isoDate : new Date().toISOString(),
+        receivedDate:
+            typeof article.receivedDate === "number" ? article.receivedDate : Date.now(),
+        read: normalizeFlag(article.read),
+        starred: normalizeFlag(article.starred),
+        words: Array.isArray(article.words)
+            ? article.words.filter((word): word is string => typeof word === "string")
+            : undefined,
+    };
+}
+
+function normalizeBackupSetting(setting: BackupSetting): Settings {
+    return {
+        key: setting.key,
+        value: setting.value ?? null,
+    };
 }
 
 /**
@@ -99,6 +196,11 @@ export async function importBackup(file: File, onProgress?: (progress: BackupPro
         throw new Error(`Invalid backup file: ${duplicateCheck.error}`);
     }
 
+    const restoredFeeds = data.feeds.map(normalizeBackupFeed);
+    const restoredFolders = data.folders.map(normalizeBackupFolder);
+    const restoredArticles = data.articles.map(normalizeBackupArticle);
+    const restoredSettings = data.settings.map(normalizeBackupSetting);
+
     const totalSteps = 5;
     let currentStep = 0;
 
@@ -117,22 +219,22 @@ export async function importBackup(file: File, onProgress?: (progress: BackupPro
         await db.articleBodies.clear();
         await db.settings.clear();
 
-        if (data.feeds.length) {
+        if (restoredFeeds.length) {
             onProgress?.({ stage: "Restoring feeds", current: ++currentStep, total: totalSteps });
-            await db.feeds.bulkPut(data.feeds as any);
+            await db.feeds.bulkPut(restoredFeeds);
         }
-        if (data.folders.length) {
+        if (restoredFolders.length) {
             onProgress?.({ stage: "Restoring folders", current: ++currentStep, total: totalSteps });
-            await db.folders.bulkPut(data.folders as any);
+            await db.folders.bulkPut(restoredFolders);
         }
-        if (data.articles.length) {
+        if (restoredArticles.length) {
             onProgress?.({
                 stage: "Restoring articles",
                 current: ++currentStep,
                 total: totalSteps,
             });
 
-            const articleSummaries = data.articles.map((article) => {
+            const articleSummaries: Article[] = restoredArticles.map((article) => {
                 const content = typeof article.content === "string" ? article.content : "";
                 const { content: _content, ...summary } = article;
 
@@ -144,7 +246,7 @@ export async function importBackup(file: File, onProgress?: (progress: BackupPro
                 };
             });
 
-            await db.articles.bulkPut(articleSummaries as any);
+            await db.articles.bulkPut(articleSummaries);
 
             const storedArticles = await db.articles
                 .where("[feedId+guid]")
@@ -155,7 +257,7 @@ export async function importBackup(file: File, onProgress?: (progress: BackupPro
                     .filter((article) => article.id !== undefined)
                     .map((article) => [`${article.feedId}:${article.guid}`, article.id as number])
             );
-            const articleBodies = data.articles
+            const articleBodies = restoredArticles
                 .map((article) => {
                     const articleId = article.id ?? articleIdByKey.get(`${article.feedId}:${article.guid}`);
                     if (articleId === undefined) return null;
@@ -172,22 +274,22 @@ export async function importBackup(file: File, onProgress?: (progress: BackupPro
                 await db.articleBodies.bulkPut(articleBodies);
             }
         }
-        if (data.settings.length) {
+        if (restoredSettings.length) {
             onProgress?.({
                 stage: "Restoring settings",
                 current: ++currentStep,
                 total: totalSteps,
             });
-            await db.settings.bulkPut(data.settings as any);
+            await db.settings.bulkPut(restoredSettings);
         }
         }
     );
 }
 
 function isValidBackupData(data: unknown): data is BackupData {
-    if (typeof data !== "object" || data === null) return false;
+    if (!isRecord(data)) return false;
 
-    const d = data as Record<string, unknown>;
+    const d = data;
 
     // Check required fields exist and have correct types
     if (typeof d.version !== "number") return false;
@@ -199,14 +301,24 @@ function isValidBackupData(data: unknown): data is BackupData {
 
     // Basic validation of array contents
     for (const feed of d.feeds) {
-        if (typeof feed !== "object" || feed === null) return false;
-        if (typeof (feed as any).url !== "string") return false;
+        if (!isRecord(feed)) return false;
+        if (typeof feed.url !== "string") return false;
+    }
+
+    for (const folder of d.folders) {
+        if (!isRecord(folder)) return false;
+        if (typeof folder.name !== "string") return false;
     }
 
     for (const article of d.articles) {
-        if (typeof article !== "object" || article === null) return false;
-        if (typeof (article as any).feedId !== "number") return false;
-        if (typeof (article as any).guid !== "string") return false;
+        if (!isRecord(article)) return false;
+        if (typeof article.feedId !== "number") return false;
+        if (typeof article.guid !== "string") return false;
+    }
+
+    for (const setting of d.settings) {
+        if (!isRecord(setting)) return false;
+        if (typeof setting.key !== "string") return false;
     }
 
     return true;
@@ -215,7 +327,7 @@ function isValidBackupData(data: unknown): data is BackupData {
 function validateBackupDuplicates(data: BackupData): { isValid: boolean; error?: string } {
     const feedUrls = new Set<string>();
     for (const feed of data.feeds) {
-        const url = (feed as any).url as string;
+        const url = feed.url;
         if (feedUrls.has(url)) {
             return { isValid: false, error: `Duplicate feed URL found in backup: ${url}` };
         }
@@ -224,24 +336,19 @@ function validateBackupDuplicates(data: BackupData): { isValid: boolean; error?:
 
     const folderNames = new Set<string>();
     for (const folder of data.folders) {
-        const name = (folder as any).name as string | undefined;
-        if (name) {
-            if (folderNames.has(name)) {
-                return { isValid: false, error: `Duplicate folder name found in backup: ${name}` };
-            }
-            folderNames.add(name);
+        if (folderNames.has(folder.name)) {
+            return { isValid: false, error: `Duplicate folder name found in backup: ${folder.name}` };
         }
+        folderNames.add(folder.name);
     }
 
     const articleKeys = new Set<string>();
     for (const article of data.articles) {
-        const feedId = (article as any).feedId as number;
-        const guid = (article as any).guid as string;
-        const key = `${feedId}:${guid}`;
+        const key = `${article.feedId}:${article.guid}`;
         if (articleKeys.has(key)) {
             return {
                 isValid: false,
-                error: `Duplicate article GUID found for feed ${feedId}: ${guid}`,
+                error: `Duplicate article GUID found for feed ${article.feedId}: ${article.guid}`,
             };
         }
         articleKeys.add(key);
@@ -249,13 +356,10 @@ function validateBackupDuplicates(data: BackupData): { isValid: boolean; error?:
 
     const settingKeys = new Set<string>();
     for (const setting of data.settings) {
-        const key = (setting as any).key as string | undefined;
-        if (key) {
-            if (settingKeys.has(key)) {
-                return { isValid: false, error: `Duplicate setting key found in backup: ${key}` };
-            }
-            settingKeys.add(key);
+        if (settingKeys.has(setting.key)) {
+            return { isValid: false, error: `Duplicate setting key found in backup: ${setting.key}` };
         }
+        settingKeys.add(setting.key);
     }
 
     return { isValid: true };

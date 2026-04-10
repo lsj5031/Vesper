@@ -6,7 +6,10 @@
     export let isSelected = false;
     export let selectionMode = false;
 
-    const dispatch = createEventDispatcher();
+    const dispatch = createEventDispatcher<{
+        select: { articleId: number | undefined };
+        toggleSelection: { articleId: number | undefined };
+    }>();
 
     function formatDate(iso: string): string {
         try {

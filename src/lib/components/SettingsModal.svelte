@@ -127,7 +127,7 @@ async function handleBackupSelect(e: Event) {
         class="border border-o3-teal p-6 shadow-2xl max-w-md w-full rounded relative z-10"
         role="dialog"
         aria-modal="true"
-        style={`background:var(--vesper-panel)`}
+        style="background:var(--vesper-panel)"
         in:scale={{ start: 0.95, duration: 300, easing: quintOut }}
     >
         <div class="mb-6">

@@ -22,10 +22,43 @@ type PreparedArticle = {
     receivedDate: number;
 };
 
+type ParsedFeedLinkObject = {
+    href?: string;
+};
+
+type ParsedFeedItem = {
+    title?: string;
+    link?: string | ParsedFeedLinkObject | Array<string | ParsedFeedLinkObject>;
+    guid?: string;
+    id?: string;
+    comments?: string;
+    summary?: string;
+    content?: string;
+    "content:encoded"?: string;
+    "dc:creator"?: string;
+    creator?: string;
+    author?: string;
+    isoDate?: string;
+    pubDate?: string;
+};
+
+type ParsedFeed = {
+    title: string;
+    link: string;
+    description: string;
+    items: ParsedFeedItem[];
+};
+
 const FEED_PROXY_BASE = (import.meta.env.VITE_FEED_PROXY_BASE || "").trim();
-const inFlightFeedRequests = new Map<string, Promise<any>>();
+const inFlightFeedRequests = new Map<string, Promise<ParsedFeed>>();
 const feedFailureState = new Map<string, { count: number; nextAllowed: number }>();
 let lastRefreshAllAt = 0;
+
+function getErrorMessage(error: unknown): string {
+    if (error instanceof Error) return error.message;
+    if (typeof error === "string") return error;
+    return "Unknown error";
+}
 
 // Initialize DOMPurify (needs window context, so check for browser)
 let sanitize = (html: string) => html;
@@ -77,16 +110,18 @@ function resolveUrl(candidate: string, bases: string[]): string {
     return "";
 }
 
-function resolveItemLink(item: any, feed: Feed): string {
+function resolveItemLink(item: ParsedFeedItem, feed: Feed): string {
     const baseCandidates = [feed.website, feed.url].filter(Boolean) as string[];
 
     const linkCandidate = Array.isArray(item.link) ? item.link[0] : item.link;
+    const linkObject =
+        typeof linkCandidate === "object" && linkCandidate !== null ? linkCandidate : undefined;
     // rss-parser sometimes returns Atom links as objects with href
     const rawLink =
         typeof linkCandidate === "string" && linkCandidate
             ? linkCandidate
-            : linkCandidate && typeof linkCandidate.href === "string"
-              ? linkCandidate.href
+            : typeof linkObject?.href === "string"
+              ? linkObject.href
               : "";
 
     const guidCandidate = typeof item.guid === "string" ? item.guid : "";
@@ -153,7 +188,7 @@ function looksLikeHtml(text: string, contentType: string | null): boolean {
 }
 
 // Parse RSS/Atom feed directly from XML (client-side)
-function parseFeedXml(xmlText: string) {
+function parseFeedXml(xmlText: string): ParsedFeed {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
@@ -227,7 +262,7 @@ function parseFeedXml(xmlText: string) {
 }
 
 // Direct client-side fetch (bypasses proxy, handles CORS)
-async function fetchFeedDirect(url: string): Promise<any> {
+async function fetchFeedDirect(url: string): Promise<ParsedFeed> {
     const response = await fetch(url, {
         headers: {
             "User-Agent":
@@ -257,7 +292,7 @@ export async function fetchFeed(
     maxRetries = RSS_CONFIG.MAX_FETCH_RETRIES,
     forceRefresh = false,
     overrideUseDirectFetch?: boolean
-) {
+): Promise<ParsedFeed> {
     const cacheKey = normalizeFeedUrl(url);
 
     // De-duplicate in-flight requests for the same feed unless explicitly forcing
@@ -265,8 +300,8 @@ export async function fetchFeed(
         return inFlightFeedRequests.get(cacheKey)!;
     }
 
-    const task = (async () => {
-        let lastError: any;
+    const task = (async (): Promise<ParsedFeed> => {
+        let lastError: unknown;
         const candidates = buildFeedUrlVariants(url);
 
         // Check if user prefers direct fetch mode (for desktop apps without server)
@@ -275,7 +310,7 @@ export async function fetchFeed(
         const useDirectFetch = overrideUseDirectFetch ?? settings.useDirectFetch ?? false;
 
         for (const candidate of candidates) {
-            let candidateError: any;
+            let candidateError: unknown;
 
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
                 try {
@@ -284,8 +319,8 @@ export async function fetchFeed(
                         try {
                             logger.info(`Using direct fetch for ${candidate}`, "rss");
                             return await fetchFeedDirect(candidate);
-                        } catch (directErr: any) {
-                            const isCorsBlocked = directErr.message === "CORS_BLOCKED";
+                        } catch (directErr: unknown) {
+                            const isCorsBlocked = getErrorMessage(directErr) === "CORS_BLOCKED";
 
                             if (isCorsBlocked) {
                                 logger.warn(
@@ -328,7 +363,7 @@ export async function fetchFeed(
                                 }
                                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-                                let text = await response.text();
+                                const text = await response.text();
                                 if (looksLikeHtml(text, response.headers.get("content-type"))) {
                                     throw new Error(
                                         "Proxy returned HTML (feed proxy likely missing in production)"
@@ -352,7 +387,7 @@ export async function fetchFeed(
 
                 const isRetryable =
                     candidateError instanceof TypeError ||
-                    (candidateError as any)?.message?.includes("HTTP");
+                    getErrorMessage(candidateError).includes("HTTP");
                 if (attempt < maxRetries && isRetryable) {
                     await new Promise((resolve) =>
                         setTimeout(resolve, RSS_CONFIG.BACKOFF_BASE_MS * Math.pow(2, attempt))
@@ -366,7 +401,7 @@ export async function fetchFeed(
         }
 
         logger.error(`Failed to fetch ${url} after ${maxRetries + 1} attempts`, lastError, "rss");
-        throw lastError;
+        throw lastError instanceof Error ? lastError : new Error(getErrorMessage(lastError));
     })();
 
     inFlightFeedRequests.set(cacheKey, task);
@@ -381,7 +416,7 @@ export async function fetchFeed(
 
 export async function syncFeed(
     feed: Feed,
-    unreadLimit = ARTICLE_CONFIG.UNREAD_LIMIT,
+    _unreadLimit = ARTICLE_CONFIG.UNREAD_LIMIT,
     forceRefresh = false,
     overrideUseDirectFetch?: boolean
 ) {
@@ -397,11 +432,10 @@ export async function syncFeed(
 
         for (const item of items) {
             const resolvedLink = resolveItemLink(item, feed);
-            const commentsLink =
-                typeof (item as any).comments === "string" ? (item as any).comments : "";
+            const commentsLink = typeof item.comments === "string" ? item.comments : "";
             const guidCandidate = [
                 item.guid,
-                (item as any).id,
+                item.id,
                 commentsLink,
                 item.link,
                 item.title,

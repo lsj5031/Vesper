@@ -112,7 +112,7 @@ async function handleDeleteFeed(feed: Feed, e: Event) {
 }
 
 // Periodic Refresh Timer
-let refreshTimer: any;
+let refreshTimer: ReturnType<typeof setInterval> | undefined;
 
 $: {
     // Clean up existing timer
@@ -263,14 +263,14 @@ onDestroy(() => clearInterval(refreshTimer));
         <div class="divider-h border-o3-black-80 my-2"></div>
 
         <!-- Folders -->
-        {#each foldersList as folder}
+        {#each foldersList as folder (folder.id ?? folder.name)}
             <div class="space-y-0.5">
                 <div
                     class={`px-3 py-1 text-xs font-bold uppercase tracking-wider ${$themeMode === "dark" ? "text-o3-black-50" : "text-o3-black-70"}`}
                 >
                     {folder.name}
                 </div>
-                {#each folder.id != null ? feedsByFolderId[folder.id] || [] : [] as feed}
+                {#each folder.id != null ? feedsByFolderId[folder.id] || [] : [] as feed (feed.id ?? feed.url)}
                     {@const isUpdating = $refreshProgress ? true : false}
                     {@const activeBg = $themeMode === "dark" ? "bg-o3-black-80" : "bg-o3-black-10"}
                     {@const hoverBg =
@@ -360,7 +360,7 @@ onDestroy(() => clearInterval(refreshTimer));
             >
                 Feeds
             </div>
-            {#each uncategorizedFeeds as feed}
+            {#each uncategorizedFeeds as feed (feed.id ?? feed.url)}
                 {@const isUpdating = $refreshProgress ? true : false}
                 {@const activeBg = $themeMode === "dark" ? "bg-o3-black-80" : "bg-o3-black-10"}
                 {@const hoverBg =
