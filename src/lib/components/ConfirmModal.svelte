@@ -39,6 +39,11 @@ function handleKeydown(e: KeyboardEvent) {
         closeConfirm(false);
     }
 }
+
+function initAutofocus(node: HTMLElement) {
+    node.focus();
+    return { destroy: () => {} };
+}
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -98,7 +103,7 @@ function handleKeydown(e: KeyboardEvent) {
                     class:border-o3-teal={!$confirmState.isDangerous}
                     class:text-o3-black-90={!$confirmState.isDangerous}
                     on:click={handleConfirm}
-                    autofocus
+                    use:initAutofocus
                 >
                     {$confirmState.confirmText}
                 </button>

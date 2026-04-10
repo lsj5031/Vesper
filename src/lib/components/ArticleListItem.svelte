@@ -32,12 +32,20 @@
             { articleId: article.id }
         );
     }
+
+    function handleKeydown(e: KeyboardEvent) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleClick();
+        }
+    }
 </script>
 
 <div
     class="article-item"
     class:selected={isSelected}
     on:click={handleClick}
+    on:keydown={handleKeydown}
     role="button"
     tabindex="0"
     aria-pressed={isSelected}
@@ -108,6 +116,7 @@
         color: var(--o3-color-palette-black-20);
         display: -webkit-box;
         -webkit-line-clamp: 2;
+        line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
