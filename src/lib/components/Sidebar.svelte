@@ -22,9 +22,13 @@ const unreadCounts = liveQuery(async () => {
         .where("[feedId+read+isoDate]")
         .between([Dexie.minKey, 0, Dexie.minKey], [Dexie.maxKey, 0, Dexie.maxKey])
         .keys()) as unknown as [number, 0, string][];
+
     const counts: Record<string | number, number> = {
         all: unreadKeys.length,
-        starred: await db.articles.where("starred").equals(1).count(),
+        starred: await db.articles
+            .where("[starred+read+isoDate]")
+            .between([1, 0, Dexie.minKey], [1, 0, Dexie.maxKey])
+            .count(),
     };
 
     unreadKeys.forEach(([feedId]) => {
