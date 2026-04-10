@@ -1,16 +1,28 @@
 <script lang="ts">
 import { liveQuery } from "dexie";
-import { db } from "../db";
+import { db, deleteFeedData, type Article } from "../db";
 import { selectedArticleId, themeMode, activePane, selectedFeedId } from "../stores";
 import { format } from "date-fns";
 import { fly } from "svelte/transition";
 import { quintOut } from "svelte/easing";
 import { showConfirm } from "../confirm";
 
+type ReaderArticle = Article & { content: string };
+
 // READ-ONLY query - just fetch the article
 $: articleStore = liveQuery(async () => {
     if (!$selectedArticleId) return null;
-    return await db.articles.get($selectedArticleId);
+
+    return db.transaction("r", db.articles, db.articleBodies, async () => {
+        const article = await db.articles.get($selectedArticleId);
+        if (!article) return null;
+
+        const body = await db.articleBodies.get($selectedArticleId);
+        return {
+            ...article,
+            content: body?.content ?? article.content ?? "",
+        } satisfies ReaderArticle;
+    });
 });
 
 $: currentFeed = liveQuery(async () => {
@@ -46,10 +58,7 @@ async function unsubscribeFeed() {
     if (!confirmed) return;
 
     const id = feed.id;
-    await db.transaction("rw", db.feeds, db.articles, async () => {
-        await db.articles.where("feedId").equals(id).delete();
-        await db.feeds.delete(id);
-    });
+    await deleteFeedData(id);
     $selectedFeedId = "all";
 }
 

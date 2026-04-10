@@ -1,5 +1,5 @@
 <script lang="ts">
-import { liveQuery, type Observable } from "dexie";
+import Dexie, { liveQuery, type Observable } from "dexie";
 import { onDestroy } from "svelte";
 import { fly } from "svelte/transition";
 import { quintOut } from "svelte/easing";
@@ -7,6 +7,7 @@ import {
     db,
     type Article,
     type Feed,
+    deleteFeedData,
     markArticlesAsRead,
     markArticlesAsUnread,
     markFeedAsRead,
@@ -34,6 +35,7 @@ let selectionMode = false;
 let hasSelection = false;
 let showActionMenu = false;
 let isDark = true;
+const MAX_ANIMATED_LIST_ITEMS = 16;
 
 $: isDark = $themeMode === "dark";
 
@@ -50,22 +52,29 @@ $: {
     const query = $searchQuery;
 
     articlesStore = liveQuery(async () => {
-        let collection;
-
         // 1. Search takes precedence if active
         const searchTokens = tokenize(query);
 
         if (searchTokens.length > 0) {
-            // Optimization: Filter by the longest token first (likely most unique)
-            // or just the first one. Let's use the first one for prefix matching support.
-            const firstToken = searchTokens[0];
+            // Use the longest token first to keep the candidate set as small as possible.
+            const [firstToken, ...remainingTokens] = [...searchTokens].sort(
+                (left, right) => right.length - left.length
+            );
 
             // Get candidates from DB using index (cap to avoid large in-memory scans)
-            let candidateIds = await db.articles
-                .where("words")
-                .startsWith(firstToken)
-                .limit(ARTICLE_CONFIG.MAX_RESULTS * 2) // allow some headroom before secondary filtering
-                .primaryKeys();
+            const candidateIds = Array.from(
+                new Set(
+                    (await db.articles
+                        .where("words")
+                        .startsWith(firstToken)
+                        .limit(ARTICLE_CONFIG.MAX_RESULTS * 2) // allow some headroom before secondary filtering
+                        .primaryKeys()) as number[]
+                )
+            );
+
+            if (candidateIds.length === 0) {
+                return [];
+            }
 
             // If we have multiple tokens, we must intersect in memory (or multiple queries)
             // For "apple banana", we got IDs for "apple*". Now filter those candidates.
@@ -75,12 +84,12 @@ $: {
             let results = await db.articles
                 .where("id")
                 .anyOf(candidateIds)
-                .reverse()
-                .sortBy("isoDate");
+                .toArray();
+
+            results.sort((left, right) => right.isoDate.localeCompare(left.isoDate));
 
             // Refine results for other tokens in memory
-            if (searchTokens.length > 1) {
-                const remainingTokens = searchTokens.slice(1);
+            if (remainingTokens.length > 0) {
                 results = results.filter((a) =>
                     remainingTokens.every((t) => a.words?.some((w) => w.startsWith(t)))
                 );
@@ -98,49 +107,56 @@ $: {
             return results.slice(0, ARTICLE_CONFIG.MAX_RESULTS);
         }
 
-        // 2. Standard Navigation (No Search)
         if (fid === "all") {
-            collection = db.articles.orderBy("isoDate").reverse();
-        } else if (fid === "starred") {
-            collection = db.articles
-                .orderBy("isoDate")
-                .reverse()
-                .filter((a) => a.starred === 1);
-        } else if (typeof fid === "number") {
-            collection = db.articles
-                .orderBy("isoDate")
-                .reverse()
-                .filter((a) => a.feedId === fid);
-        }
-
-        // Execute query
-        let results: Article[] = [];
-
-        if (fid === "all") {
-            // When filtering unread in All view, query unread directly so we don't drop older unread items when the latest 200 are already read.
             if (status === "unread") {
-                results = await db.articles
-                    .orderBy("isoDate")
+                return db.articles
+                    .where("[read+isoDate]")
+                    .between([0, Dexie.minKey], [0, Dexie.maxKey])
                     .reverse()
-                    .filter((a) => a.read === 0)
                     .limit(ARTICLE_CONFIG.MAX_RESULTS)
                     .toArray();
-            } else {
-                results = await (collection as any).limit(ARTICLE_CONFIG.MAX_RESULTS).toArray();
             }
-        } else if (fid === "starred") {
-            results = await (collection as any).limit(ARTICLE_CONFIG.MAX_RESULTS).toArray();
-        } else if (typeof fid === "number") {
-            results = await (collection as any).limit(ARTICLE_CONFIG.MAX_RESULTS).toArray();
+
+            return db.articles.orderBy("isoDate").reverse().limit(ARTICLE_CONFIG.MAX_RESULTS).toArray();
         }
 
-        // Apply memory filter for read/unread if needed
-        if (status === "unread" && fid !== "all") {
-            results = results.filter((a) => a.read === 0);
+        if (fid === "starred") {
+            if (status === "unread") {
+                return db.articles
+                    .where("[starred+read+isoDate]")
+                    .between([1, 0, Dexie.minKey], [1, 0, Dexie.maxKey])
+                    .reverse()
+                    .limit(ARTICLE_CONFIG.MAX_RESULTS)
+                    .toArray();
+            }
+
+            return db.articles
+                .where("[starred+isoDate]")
+                .between([1, Dexie.minKey], [1, Dexie.maxKey])
+                .reverse()
+                .limit(ARTICLE_CONFIG.MAX_RESULTS)
+                .toArray();
         }
 
-        // Cap all result sets to avoid heavy rerenders
-        return results.slice(0, ARTICLE_CONFIG.MAX_RESULTS);
+        if (typeof fid === "number") {
+            if (status === "unread") {
+                return db.articles
+                    .where("[feedId+read+isoDate]")
+                    .between([fid, 0, Dexie.minKey], [fid, 0, Dexie.maxKey])
+                    .reverse()
+                    .limit(ARTICLE_CONFIG.MAX_RESULTS)
+                    .toArray();
+            }
+
+            return db.articles
+                .where("[feedId+isoDate]")
+                .between([fid, Dexie.minKey], [fid, Dexie.maxKey])
+                .reverse()
+                .limit(ARTICLE_CONFIG.MAX_RESULTS)
+                .toArray();
+        }
+
+        return [];
     });
 }
 
@@ -192,10 +208,7 @@ async function deleteCurrentFeed() {
     if (!confirmed) return;
 
     const id = currentFeed.id;
-    await db.transaction("rw", db.feeds, db.articles, async () => {
-        await db.articles.where("feedId").equals(id).delete();
-        await db.feeds.delete(id);
-    });
+    await deleteFeedData(id);
     $selectedFeedId = "all";
 }
 
@@ -819,8 +832,8 @@ function handleWindowClick(event: MouseEvent) {
                     id={"article-list-item-" + article.id}
                     in:fly={{
                         y: 20,
-                        duration: 400,
-                        delay: Math.min(i * 30, 300),
+                        duration: i < MAX_ANIMATED_LIST_ITEMS ? 240 : 0,
+                        delay: i < MAX_ANIMATED_LIST_ITEMS ? i * 16 : 0,
                         easing: quintOut,
                     }}
                     class="relative w-full flex items-stretch border-b group transition-colors duration-200"

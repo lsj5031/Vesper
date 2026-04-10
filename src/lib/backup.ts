@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { tokenize } from "./search";
 
 export interface BackupProgress {
     stage: string;
@@ -28,13 +29,26 @@ interface BackupData {
  */
 export async function exportBackup(onProgress?: (progress: BackupProgress) => void) {
     onProgress?.({ stage: "Exporting feeds", current: 0, total: 4 });
+
+    const [feeds, folders, articles, articleBodies, settings] = await Promise.all([
+        db.feeds.toArray(),
+        db.folders.toArray(),
+        db.articles.toArray(),
+        db.articleBodies.toArray(),
+        db.settings.toArray(),
+    ]);
+    const bodyByArticleId = new Map(articleBodies.map((body) => [body.articleId, body.content]));
+
     const data = {
         version: 1,
         timestamp: Date.now(),
-        feeds: await db.feeds.toArray(),
-        folders: await db.folders.toArray(),
-        articles: await db.articles.toArray(),
-        settings: await db.settings.toArray(),
+        feeds,
+        folders,
+        articles: articles.map((article) => ({
+            ...article,
+            content: article.id !== undefined ? bodyByArticleId.get(article.id) ?? article.content ?? "" : "",
+        })),
+        settings,
     };
 
     onProgress?.({ stage: "Creating backup file", current: 4, total: 4 });
@@ -88,7 +102,10 @@ export async function importBackup(file: File, onProgress?: (progress: BackupPro
     const totalSteps = 5;
     let currentStep = 0;
 
-    await db.transaction("rw", db.feeds, db.folders, db.articles, db.settings, async () => {
+    await db.transaction(
+        "rw",
+        [db.feeds, db.folders, db.articles, db.articleBodies, db.settings],
+        async () => {
         onProgress?.({
             stage: "Clearing existing data",
             current: ++currentStep,
@@ -97,6 +114,7 @@ export async function importBackup(file: File, onProgress?: (progress: BackupPro
         await db.feeds.clear();
         await db.folders.clear();
         await db.articles.clear();
+        await db.articleBodies.clear();
         await db.settings.clear();
 
         if (data.feeds.length) {
@@ -113,7 +131,46 @@ export async function importBackup(file: File, onProgress?: (progress: BackupPro
                 current: ++currentStep,
                 total: totalSteps,
             });
-            await db.articles.bulkPut(data.articles as any);
+
+            const articleSummaries = data.articles.map((article) => {
+                const content = typeof article.content === "string" ? article.content : "";
+                const { content: _content, ...summary } = article;
+
+                return {
+                    ...summary,
+                    words: Array.isArray(article.words)
+                        ? article.words
+                        : tokenize(`${typeof article.title === "string" ? article.title : ""} ${content}`),
+                };
+            });
+
+            await db.articles.bulkPut(articleSummaries as any);
+
+            const storedArticles = await db.articles
+                .where("[feedId+guid]")
+                .anyOf(articleSummaries.map((article) => [article.feedId, article.guid]))
+                .toArray();
+            const articleIdByKey = new Map(
+                storedArticles
+                    .filter((article) => article.id !== undefined)
+                    .map((article) => [`${article.feedId}:${article.guid}`, article.id as number])
+            );
+            const articleBodies = data.articles
+                .map((article) => {
+                    const articleId = article.id ?? articleIdByKey.get(`${article.feedId}:${article.guid}`);
+                    if (articleId === undefined) return null;
+
+                    return {
+                        articleId,
+                        feedId: article.feedId,
+                        content: typeof article.content === "string" ? article.content : "",
+                    };
+                })
+                .filter((body): body is { articleId: number; feedId: number; content: string } => body !== null);
+
+            if (articleBodies.length > 0) {
+                await db.articleBodies.bulkPut(articleBodies);
+            }
         }
         if (data.settings.length) {
             onProgress?.({
@@ -123,7 +180,8 @@ export async function importBackup(file: File, onProgress?: (progress: BackupPro
             });
             await db.settings.bulkPut(data.settings as any);
         }
-    });
+        }
+    );
 }
 
 function isValidBackupData(data: unknown): data is BackupData {

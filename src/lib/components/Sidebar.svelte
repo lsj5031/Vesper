@@ -1,10 +1,9 @@
 <script lang="ts">
+import Dexie, { liveQuery } from "dexie";
 import { onDestroy } from "svelte";
-import { liveQuery } from "dexie";
-import { db, type Feed } from "../db";
+import { db, deleteFeedData, type Feed } from "../db";
 import {
     selectedFeedId,
-    selectedArticleId,
     searchQuery,
     refreshProgress,
     userSettings,
@@ -19,21 +18,43 @@ import { showConfirm } from "../confirm";
 const folders = liveQuery(() => db.folders.toArray());
 const feeds = liveQuery(() => db.feeds.toArray());
 const unreadCounts = liveQuery(async () => {
-    const unread = await db.articles.where("read").equals(0).toArray();
-    const starred = await db.articles.where("starred").equals(1).toArray();
-    const counts: Record<string | number, number> = { all: unread.length, starred: starred.length };
+    const unreadKeys = (await db.articles
+        .where("[feedId+read+isoDate]")
+        .between([Dexie.minKey, 0, Dexie.minKey], [Dexie.maxKey, 0, Dexie.maxKey])
+        .keys()) as unknown as [number, 0, string][];
+    const counts: Record<string | number, number> = {
+        all: unreadKeys.length,
+        starred: await db.articles.where("starred").equals(1).count(),
+    };
 
-    unread.forEach((a) => {
-        if (a.feedId) {
-            counts[a.feedId] = (counts[a.feedId] || 0) + 1;
-        }
+    unreadKeys.forEach(([feedId]) => {
+        counts[feedId] = (counts[feedId] || 0) + 1;
     });
+
     return counts;
 });
 
 // Derived state (naive grouping for simple template)
 $: feedsList = $feeds || [];
 $: foldersList = $folders || [];
+let feedsByFolderId: Record<number, Feed[]> = {};
+let uncategorizedFeeds: Feed[] = [];
+
+$: {
+    const grouped: Record<number, Feed[]> = {};
+    const rootFeeds: Feed[] = [];
+
+    for (const feed of feedsList) {
+        if (typeof feed.folderId === "number") {
+            (grouped[feed.folderId] ??= []).push(feed);
+        } else {
+            rootFeeds.push(feed);
+        }
+    }
+
+    feedsByFolderId = grouped;
+    uncategorizedFeeds = rootFeeds;
+}
 
 let isManaging = false;
 let refreshingFeeds = new Set<number>();
@@ -57,13 +78,6 @@ async function handleRefreshFeed(feed: Feed, e: Event) {
         refreshingFeeds.delete(feed.id);
         refreshingFeeds = refreshingFeeds;
     }
-}
-
-function getRefreshButtonClass(feedId: number | undefined): string {
-    if (!feedId) return "text-o3-black-50 hover:text-o3-teal px-1";
-    return refreshingFeeds.has(feedId)
-        ? "text-o3-black-50 hover:text-o3-teal px-1 animate-spin"
-        : "text-o3-black-50 hover:text-o3-teal px-1";
 }
 
 async function handleRefreshAll() {
@@ -90,10 +104,7 @@ async function handleDeleteFeed(feed: Feed, e: Event) {
     });
     if (!confirmed) return;
 
-    await db.transaction("rw", db.feeds, db.articles, async () => {
-        await db.articles.where("feedId").equals(id).delete();
-        await db.feeds.delete(id);
-    });
+    await deleteFeedData(id);
 
     if ($selectedFeedId === id) {
         $selectedFeedId = "all";
@@ -259,7 +270,7 @@ onDestroy(() => clearInterval(refreshTimer));
                 >
                     {folder.name}
                 </div>
-                {#each feedsList.filter((f) => f.folderId === folder.id) as feed}
+                {#each folder.id != null ? feedsByFolderId[folder.id] || [] : [] as feed}
                     {@const isUpdating = $refreshProgress ? true : false}
                     {@const activeBg = $themeMode === "dark" ? "bg-o3-black-80" : "bg-o3-black-10"}
                     {@const hoverBg =
@@ -349,7 +360,7 @@ onDestroy(() => clearInterval(refreshTimer));
             >
                 Feeds
             </div>
-            {#each feedsList.filter((f) => !f.folderId) as feed}
+            {#each uncategorizedFeeds as feed}
                 {@const isUpdating = $refreshProgress ? true : false}
                 {@const activeBg = $themeMode === "dark" ? "bg-o3-black-80" : "bg-o3-black-10"}
                 {@const hoverBg =

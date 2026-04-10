@@ -1,5 +1,5 @@
 import DOMPurify from "dompurify";
-import { db, type Feed, type Article } from "./db";
+import { db, type Feed, type Article, type ArticleBody } from "./db";
 import { tokenize } from "./search";
 import { refreshProgress } from "./stores";
 import { get } from "svelte/store";
@@ -11,6 +11,17 @@ import { userSettings } from "./stores";
 type UserSettings = {
     useDirectFetch?: boolean;
 };
+
+type PreparedArticle = {
+    guid: string;
+    title: string;
+    link: string;
+    contentRaw: string;
+    author?: string;
+    isoDate: string;
+    receivedDate: number;
+};
+
 const FEED_PROXY_BASE = (import.meta.env.VITE_FEED_PROXY_BASE || "").trim();
 const inFlightFeedRequests = new Map<string, Promise<any>>();
 const feedFailureState = new Map<string, { count: number; nextAllowed: number }>();
@@ -376,19 +387,15 @@ export async function syncFeed(
 ) {
     try {
         const data = await fetchFeed(feed.url, 2, forceRefresh, overrideUseDirectFetch);
+        const nextFeedTitle = feed.title || data.title || "Unknown Feed";
+        const syncCompletedAt = Date.now();
 
-        // Update Feed Metadata
-        await db.feeds.update(feed.id!, {
-            title: feed.title || data.title || "Unknown Feed",
-            lastFetched: Date.now(),
-            error: undefined,
-        });
-
-        // Process all articles (convert to Article objects first)
+        // Keep the first pass cheap so duplicate items do not pay the sanitize/tokenize cost.
         const items = Array.isArray(data.items) ? data.items : [];
-        const processedArticles: Article[] = items.map((item: any) => {
-            const contentRaw = item["content:encoded"] || item.content || item.summary || "";
-            const cleanContent = sanitize(contentRaw);
+        const receivedDate = Date.now();
+        const preparedArticlesByGuid = new Map<string, PreparedArticle>();
+
+        for (const item of items) {
             const resolvedLink = resolveItemLink(item, feed);
             const commentsLink =
                 typeof (item as any).comments === "string" ? (item as any).comments : "";
@@ -407,31 +414,26 @@ export async function syncFeed(
             const stableFallbackGuid =
                 resolvedLink ||
                 `${(item.title ?? "").trim()}|${item.isoDate ?? ""}|${feed.id ?? ""}`;
+            const guid = guidCandidate || stableFallbackGuid;
 
-            return {
-                feedId: feed.id!,
-                guid: guidCandidate || stableFallbackGuid,
+            if (preparedArticlesByGuid.has(guid)) continue;
+
+            preparedArticlesByGuid.set(guid, {
+                guid,
                 title: item.title || "Untitled",
                 link: resolvedLink,
-                content: cleanContent,
-                snippet: (() => {
-                    const snippetText = cleanContent.replace(/<[^>]*>?/gm, "");
-                    return snippetText.length > ARTICLE_CONFIG.SNIPPET_LENGTH
-                        ? snippetText.substring(0, ARTICLE_CONFIG.SNIPPET_LENGTH) + "..."
-                        : snippetText;
-                })(),
+                contentRaw: item["content:encoded"] || item.content || item.summary || "",
                 author: item.creator || item["dc:creator"],
                 isoDate: item.isoDate || new Date().toISOString(),
-                receivedDate: Date.now(),
-                read: 0,
-                starred: 0,
-                words: tokenize(`${item.title || ""} ${cleanContent}`),
-            };
-        });
+                receivedDate,
+            });
+        }
+
+        const preparedArticles = Array.from(preparedArticlesByGuid.values());
 
         // Efficiently filter for NEW articles (check keys only)
         // This avoids loading full article content for entire history
-        const incomingGuids = processedArticles.map((a) => a.guid);
+        const incomingGuids = Array.from(new Set(preparedArticles.map((a) => a.guid)));
 
         // Find which of these GUIDs already exist for this feed
         const existingGuidsSet = new Set<string>();
@@ -447,30 +449,35 @@ export async function syncFeed(
         );
 
         // Build lookups for backfilling missing links
-        const processedByGuid = new Map<string, Article>();
-        const processedByTitle = new Map<string, Article>();
+        const preparedByGuid = new Map<string, PreparedArticle>();
+        const preparedByTitle = new Map<string, PreparedArticle>();
 
-        for (const article of processedArticles) {
+        for (const article of preparedArticles) {
             if (!article.link) continue;
 
-            if (!processedByGuid.has(article.guid)) {
-                processedByGuid.set(article.guid, article);
+            if (!preparedByGuid.has(article.guid)) {
+                preparedByGuid.set(article.guid, article);
             }
 
             const titleKey = article.title.trim().toLowerCase();
-            if (titleKey && !processedByTitle.has(titleKey)) {
-                processedByTitle.set(titleKey, article);
+            if (titleKey && !preparedByTitle.has(titleKey)) {
+                preparedByTitle.set(titleKey, article);
             }
         }
 
         const matchedProcessedGuids = new Set<string>();
         const updatedArticleIds = new Set<number>();
+        const articlesNeedingLinkUpdate: PreparedArticle[] = [];
 
         // Backfill missing links on existing articles when we can now resolve them
         // Only fetch existing records that have a potential link update (processed article has a link)
-        const existingGuidsWithNewLinks = processedArticles
-            .filter((a) => a.link && existingGuidsSet.has(a.guid))
-            .map((a) => a.guid);
+        const existingGuidsWithNewLinks = Array.from(
+            new Set(
+                preparedArticles
+                    .filter((a) => a.link && existingGuidsSet.has(a.guid))
+                    .map((a) => a.guid)
+            )
+        );
 
         if (existingGuidsWithNewLinks.length > 0) {
             const existingRecordsForBackfill = await db.articles
@@ -479,21 +486,14 @@ export async function syncFeed(
                 .toArray();
 
             const existingByGuid = new Map(existingRecordsForBackfill.map((r) => [r.guid, r]));
-            const articlesNeedingLinkUpdate = processedArticles.filter((a) => {
-                const existing = existingByGuid.get(a.guid);
-                return existing && (!existing.link || existing.link.trim() === "") && a.link;
-            });
+            articlesNeedingLinkUpdate.push(
+                ...preparedArticles.filter((a) => {
+                    const existing = existingByGuid.get(a.guid);
+                    return existing && (!existing.link || existing.link.trim() === "") && a.link;
+                })
+            );
 
             if (articlesNeedingLinkUpdate.length > 0) {
-                await Promise.all(
-                    articlesNeedingLinkUpdate.map((article) =>
-                        db.articles
-                            .where("[feedId+guid]")
-                            .equals([feed.id!, article.guid])
-                            .modify({ link: article.link })
-                    )
-                );
-
                 articlesNeedingLinkUpdate.forEach((article) => {
                     matchedProcessedGuids.add(article.guid);
                     const existing = existingByGuid.get(article.guid);
@@ -502,26 +502,28 @@ export async function syncFeed(
             }
         }
 
-        // If GUID changed between runs (e.g., we previously fell back to title), attempt a title-based backfill
-        const missingLinkRecords = await db.articles
-            .where("feedId")
-            .equals(feed.id!)
-            .and((r) => !r.link || r.link.trim() === "")
-            .toArray();
-
         const titleBackfills: { id: number; link: string }[] = [];
 
-        for (const record of missingLinkRecords) {
-            if (record.id === undefined || updatedArticleIds.has(record.id)) continue;
+        if (preparedByGuid.size > 0 || preparedByTitle.size > 0) {
+            // Only scan existing records when the latest fetch can actually supply a missing link.
+            const missingLinkRecords = await db.articles
+                .where("feedId")
+                .equals(feed.id!)
+                .and((r) => !r.link || r.link.trim() === "")
+                .toArray();
 
-            const titleKey = (record.title || "").trim().toLowerCase();
-            const match =
-                processedByGuid.get(record.guid) ||
-                (titleKey ? processedByTitle.get(titleKey) : undefined);
+            for (const record of missingLinkRecords) {
+                if (record.id === undefined || updatedArticleIds.has(record.id)) continue;
 
-            if (match?.link && match.link !== record.link) {
-                titleBackfills.push({ id: record.id, link: match.link });
-                matchedProcessedGuids.add(match.guid);
+                const titleKey = (record.title || "").trim().toLowerCase();
+                const match =
+                    preparedByGuid.get(record.guid) ||
+                    (titleKey ? preparedByTitle.get(titleKey) : undefined);
+
+                if (match?.link && match.link !== record.link) {
+                    titleBackfills.push({ id: record.id, link: match.link });
+                    matchedProcessedGuids.add(match.guid);
+                }
             }
         }
 
@@ -531,16 +533,73 @@ export async function syncFeed(
             );
         }
 
-        const newArticles = processedArticles.filter(
+        const newArticles = preparedArticles.filter(
             (a) => !existingGuidsSet.has(a.guid) && !matchedProcessedGuids.has(a.guid)
         );
 
-        const allNewArticles = newArticles.map((a) => ({ ...a, read: 0 as const }));
+        const newArticleContentByGuid = new Map<string, string>();
+        const allNewArticles: Article[] = newArticles.map((article) => {
+            const cleanContent = sanitize(article.contentRaw);
+            const snippetText = cleanContent.replace(/<[^>]*>?/gm, "");
+            newArticleContentByGuid.set(article.guid, cleanContent);
 
-        // Bulk insert (optimized for large batches)
-        if (allNewArticles.length > 0) {
-            await db.articles.bulkAdd(allNewArticles);
-        }
+            return {
+                feedId: feed.id!,
+                guid: article.guid,
+                title: article.title,
+                link: article.link,
+                snippet:
+                    snippetText.length > ARTICLE_CONFIG.SNIPPET_LENGTH
+                        ? snippetText.substring(0, ARTICLE_CONFIG.SNIPPET_LENGTH) + "..."
+                        : snippetText,
+                author: article.author,
+                isoDate: article.isoDate,
+                receivedDate: article.receivedDate,
+                read: 0,
+                starred: 0,
+                words: tokenize(`${article.title} ${cleanContent}`),
+            };
+        });
+
+        await db.transaction("rw", db.feeds, db.articles, db.articleBodies, async () => {
+            await db.feeds.update(feed.id!, {
+                title: nextFeedTitle,
+                lastFetched: syncCompletedAt,
+                error: undefined,
+            });
+
+            for (const article of articlesNeedingLinkUpdate) {
+                await db.articles
+                    .where("[feedId+guid]")
+                    .equals([feed.id!, article.guid])
+                    .modify({ link: article.link });
+            }
+
+            for (const update of titleBackfills) {
+                await db.articles.update(update.id, { link: update.link });
+            }
+
+            if (allNewArticles.length > 0) {
+                await db.articles.bulkAdd(allNewArticles);
+
+                const insertedArticles = await db.articles
+                    .where("[feedId+guid]")
+                    .anyOf(allNewArticles.map((article) => [feed.id!, article.guid]))
+                    .toArray();
+
+                const articleBodies: ArticleBody[] = insertedArticles
+                    .filter((article): article is Article & { id: number } => article.id !== undefined)
+                    .map((article) => ({
+                        articleId: article.id,
+                        feedId: article.feedId,
+                        content: newArticleContentByGuid.get(article.guid) ?? "",
+                    }));
+
+                if (articleBodies.length > 0) {
+                    await db.articleBodies.bulkPut(articleBodies);
+                }
+            }
+        });
 
         return {
             unread: allNewArticles.length,

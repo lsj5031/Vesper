@@ -1,6 +1,11 @@
 import Dexie, { type Table } from 'dexie';
 import { tokenize } from './search';
 
+const ARTICLE_STORE_V2 = '++id, [feedId+guid], feedId, isoDate, read, starred, *words';
+const ARTICLE_STORE_V3 =
+    '++id, [feedId+guid], feedId, isoDate, read, starred, [feedId+isoDate], [read+isoDate], [starred+isoDate], [feedId+read+isoDate], [starred+read+isoDate], *words';
+const ARTICLE_BODY_STORE = '&articleId, feedId';
+
 export interface Feed {
     id?: number;
     url: string;
@@ -18,7 +23,7 @@ export interface Article {
     guid: string;
     title: string;
     link: string;
-    content: string; // HTML content (sanitized before display, but stored raw-ish or sanitized? We'll sanitize on display or fetch)
+    content?: string; // Legacy fallback for migrations/backups; article bodies live in articleBodies.
     snippet?: string;
     author?: string;
     isoDate: string;
@@ -26,6 +31,12 @@ export interface Article {
     read: 0 | 1; // Boolean stored as number for easier indexing if needed
     starred: 0 | 1;
     words?: string[]; // Search tokens
+}
+
+export interface ArticleBody {
+    articleId: number;
+    feedId: number;
+    content: string;
 }
 
 export interface Folder {
@@ -44,6 +55,7 @@ export interface Settings {
 class ReaderDB extends Dexie {
     feeds!: Table<Feed>;
     articles!: Table<Article>;
+    articleBodies!: Table<ArticleBody>;
     folders!: Table<Folder>;
     settings!: Table<Settings>;
 
@@ -51,13 +63,13 @@ class ReaderDB extends Dexie {
         super('VesperDB');
         this.version(1).stores({
             feeds: '++id, &url, folderId',
-            articles: '++id, [feedId+guid], feedId, isoDate, read, starred, *words', // Compound index for uniqueness
+            articles: ARTICLE_STORE_V2, // Compound index for uniqueness
             folders: '++id, &name',
             settings: '&key'
         });
         
         this.version(2).stores({
-            articles: '++id, [feedId+guid], feedId, isoDate, read, starred, *words'
+            articles: ARTICLE_STORE_V2
         }).upgrade(async trans => {
             // Migration: Tokenize existing articles
             // We use toCollection() to iterate safely over everything
@@ -68,6 +80,32 @@ class ReaderDB extends Dexie {
                     article.words = tokenize(text);
                 }
             });
+        });
+
+        this.version(3).stores({
+            articles: ARTICLE_STORE_V3
+        });
+
+        this.version(4).stores({
+            articles: ARTICLE_STORE_V3,
+            articleBodies: ARTICLE_BODY_STORE,
+        }).upgrade(async (trans) => {
+            const migratedBodies: ArticleBody[] = [];
+
+            await trans.table('articles').toCollection().modify((article: Article) => {
+                if (article.id === undefined || typeof article.content !== 'string') return;
+
+                migratedBodies.push({
+                    articleId: article.id,
+                    feedId: article.feedId,
+                    content: article.content,
+                });
+                delete article.content;
+            });
+
+            if (migratedBodies.length > 0) {
+                await trans.table('articleBodies').bulkPut(migratedBodies);
+            }
         });
     }
 }
@@ -127,4 +165,12 @@ export async function markFeedAsRead(feedId: number) {
 // Mark all articles as read
 export async function markAllArticlesAsRead() {
     await db.articles.toCollection().modify({ read: 1 });
+}
+
+export async function deleteFeedData(feedId: number) {
+    await db.transaction('rw', db.feeds, db.articles, db.articleBodies, async () => {
+        await db.articleBodies.where('feedId').equals(feedId).delete();
+        await db.articles.where('feedId').equals(feedId).delete();
+        await db.feeds.delete(feedId);
+    });
 }

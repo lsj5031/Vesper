@@ -6,6 +6,7 @@ describe('backup - export/import (requires IndexedDB)', () => {
 	beforeEach(async () => {
 		await db.feeds.clear();
 		await db.folders.clear();
+		await db.articleBodies.clear();
 		await db.articles.clear();
 		await db.settings.clear();
 	});
@@ -62,6 +63,49 @@ describe('backup - export/import (requires IndexedDB)', () => {
 
 			global.Blob = OriginalBlob;
 			createElementSpy.mockRestore();
+		});
+
+		it('should include article body content in exported backup', async () => {
+			const articleId = await db.articles.add({
+				feedId: 1,
+				guid: 'body-export',
+				title: 'Body Export',
+				link: 'https://example.com/article',
+				isoDate: new Date().toISOString(),
+				receivedDate: Date.now(),
+				read: 0,
+				starred: 0,
+				words: ['body', 'export']
+			});
+			await db.articleBodies.put({
+				articleId,
+				feedId: 1,
+				content: '<p>Stored separately</p>'
+			});
+
+			let capturedContent: BlobPart[] = [];
+			const OriginalBlob = global.Blob;
+			global.Blob = class MockBlob extends OriginalBlob {
+				constructor(content: BlobPart[] = [], options: BlobPropertyBag = {}) {
+					super(content, options);
+					capturedContent = content;
+				}
+			} as typeof Blob;
+
+			vi.spyOn(document, 'createElement').mockReturnValue({
+				href: '',
+				download: '',
+				click: vi.fn()
+			} as unknown as HTMLAnchorElement);
+			URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+
+			await exportBackup();
+
+			const parsed = JSON.parse(capturedContent[0] as string);
+			expect(parsed.articles[0].content).toBe('<p>Stored separately</p>');
+
+			global.Blob = OriginalBlob;
+			vi.restoreAllMocks();
 		});
 	});
 
@@ -144,8 +188,10 @@ describe('backup - export/import (requires IndexedDB)', () => {
 			await importBackup(file);
 
 			const articles = await db.articles.toArray();
+			const body = await db.articleBodies.get(articles[0].id!);
 			expect(articles).toHaveLength(1);
 			expect(articles[0].title).toBe('Test Article');
+			expect(body?.content).toBe('<p>Test content</p>');
 		});
 	});
 });
