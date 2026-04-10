@@ -90,12 +90,12 @@ class ReaderDB extends Dexie {
             articles: ARTICLE_STORE_V3,
             articleBodies: ARTICLE_BODY_STORE,
         }).upgrade(async (trans) => {
-            const migratedBodies: ArticleBody[] = [];
+            const allBodies: ArticleBody[] = [];
 
             await trans.table('articles').toCollection().modify((article: Article) => {
                 if (article.id === undefined || typeof article.content !== 'string') return;
 
-                migratedBodies.push({
+                allBodies.push({
                     articleId: article.id,
                     feedId: article.feedId,
                     content: article.content,
@@ -103,8 +103,10 @@ class ReaderDB extends Dexie {
                 delete article.content;
             });
 
-            if (migratedBodies.length > 0) {
-                await trans.table('articleBodies').bulkPut(migratedBodies);
+            // Insert bodies in chunks to avoid oversized single writes
+            const CHUNK = 500;
+            for (let i = 0; i < allBodies.length; i += CHUNK) {
+                await trans.table('articleBodies').bulkPut(allBodies.slice(i, i + CHUNK));
             }
         });
     }
