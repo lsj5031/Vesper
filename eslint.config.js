@@ -53,6 +53,12 @@ export default [
 				parser: ts.parser,
 			},
 		},
+		rules: {
+			// Svelte export let props are assigned by the framework at runtime
+			'no-unassigned-vars': 'off',
+			// Self-assignment is a standard Svelte reactivity trigger for mutable objects
+			'no-self-assign': 'off',
+		},
 	},
 	{
 		ignores: [
