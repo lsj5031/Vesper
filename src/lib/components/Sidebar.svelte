@@ -1,5 +1,5 @@
 <script lang="ts">
-import Dexie, { liveQuery } from "dexie";
+import { liveQuery } from "dexie";
 import { onDestroy } from "svelte";
 import { db, deleteFeedData, type Feed } from "../db";
 import {
@@ -18,22 +18,19 @@ import { showConfirm } from "../confirm";
 const folders = liveQuery(() => db.folders.toArray());
 const feeds = liveQuery(() => db.feeds.toArray());
 const unreadCounts = liveQuery(async () => {
-    const unreadKeys = (await db.articles
-        .where("[feedId+read+isoDate]")
-        .between([Dexie.minKey, 0, Dexie.minKey], [Dexie.maxKey, 0, Dexie.maxKey])
-        .keys()) as unknown as [number, 0, string][];
+    const unreadArticles = await db.articles
+        .where("read")
+        .equals(0)
+        .toArray();
 
     const counts: Record<string | number, number> = {
-        all: unreadKeys.length,
-        starred: await db.articles
-            .where("[starred+read+isoDate]")
-            .between([1, 0, Dexie.minKey], [1, 0, Dexie.maxKey])
-            .count(),
+        all: unreadArticles.length,
+        starred: unreadArticles.filter((a) => a.starred === 1).length,
     };
 
-    unreadKeys.forEach(([feedId]) => {
-        counts[feedId] = (counts[feedId] || 0) + 1;
-    });
+    for (const article of unreadArticles) {
+        counts[article.feedId] = (counts[article.feedId] || 0) + 1;
+    }
 
     return counts;
 });
