@@ -1,0 +1,12 @@
+# Static assets — avoid long-caching of accidental SPA HTML responses
+/webfonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/share-card.png
+  Cache-Control: public, max-age=86400
+
+/favicon.png
+  Cache-Control: public, max-age=86400
+
+/icon-*.png
+  Cache-Control: public, max-age=86400

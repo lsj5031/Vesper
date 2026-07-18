@@ -3,7 +3,7 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/f-7bb3b9c8.woff2') format('woff2');
+  src: url('/webfonts/f-7bb3b9c8.woff2') format('woff2');
 }
 
 @font-face {
@@ -11,7 +11,7 @@
   font-style: normal;
   font-weight: 300;
   font-display: swap;
-  src: url('/fonts/f-f6667783.woff2') format('woff2');
+  src: url('/webfonts/f-f6667783.woff2') format('woff2');
 }
 
 @font-face {
@@ -19,7 +19,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/f-f6667783.woff2') format('woff2');
+  src: url('/webfonts/f-f6667783.woff2') format('woff2');
 }
 
 @font-face {
@@ -27,7 +27,7 @@
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('/fonts/f-f6667783.woff2') format('woff2');
+  src: url('/webfonts/f-f6667783.woff2') format('woff2');
 }
 
 @font-face {
@@ -35,7 +35,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/f-f6667783.woff2') format('woff2');
+  src: url('/webfonts/f-f6667783.woff2') format('woff2');
 }
 
 @font-face {
@@ -43,7 +43,7 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/f-668fdabf.woff2') format('woff2');
+  src: url('/webfonts/f-668fdabf.woff2') format('woff2');
 }
 
 @font-face {
@@ -51,7 +51,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/f-fdd6c391.woff2') format('woff2');
+  src: url('/webfonts/f-fdd6c391.woff2') format('woff2');
 }
 
 @font-face {
@@ -59,7 +59,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/f-fdd6c391.woff2') format('woff2');
+  src: url('/webfonts/f-fdd6c391.woff2') format('woff2');
 }
 
 @font-face {
@@ -67,5 +67,5 @@
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('/fonts/f-fdd6c391.woff2') format('woff2');
+  src: url('/webfonts/f-fdd6c391.woff2') format('woff2');
 }
