@@ -3,18 +3,33 @@
 
 <head>
 	<meta charset="utf-8" />
-	<title>Vesper</title>
+	<title>Vesper — Offline-first RSS reader</title>
+	<meta name="description" content="Where the day settles. An elegant, offline-first RSS reader inspired by the Financial Times." />
+	<meta name="theme-color" content="#990f3d" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="author" content="Leo Shijun Liu" />
+
+	<!-- Open Graph -->
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://reader.liu.nz/" />
+	<meta property="og:title" content="Vesper — Offline-first RSS reader" />
+	<meta property="og:description" content="Where the day settles. An elegant, offline-first RSS reader inspired by the Financial Times." />
+	<meta property="og:image" content="https://reader.liu.nz/og.png" />
+	<meta property="og:locale" content="en_NZ" />
+
+	<!-- Twitter -->
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content="Vesper — Offline-first RSS reader" />
+	<meta name="twitter:description" content="Where the day settles. An elegant, offline-first RSS reader inspired by the Financial Times." />
+	<meta name="twitter:image" content="https://reader.liu.nz/og.png" />
+
 	<link rel="icon" href="%sveltekit.assets%/favicon.png" type="image/png" />
 	<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<meta name="theme-color" content="#990f3d" />
+	<link rel="manifest" href="%sveltekit.assets%/manifest.json" />
 
-	<!-- Fonts: Playfair Display (Headlines) & IBM Plex Sans (Body) -->
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link
-		href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap"
-		rel="stylesheet">
+	<link rel="preload" href="%sveltekit.assets%/fonts/f-fdd6c391.woff2" as="font" type="font/woff2" crossorigin />
+	<link rel="preload" href="%sveltekit.assets%/fonts/f-f6667783.woff2" as="font" type="font/woff2" crossorigin />
+	<link rel="stylesheet" href="%sveltekit.assets%/fonts/fonts.css" />
 
 	%sveltekit.head%
 </head>

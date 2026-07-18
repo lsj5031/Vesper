@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Starter feeds** on empty-state onboarding: one-click HN / Simon Willison / CSS-Tricks / Daring Fireball, plus “Load starter pack”
+- **SEO & social meta**: description, Open Graph, Twitter cards, `/og.png`
+- **Self-hosted fonts** (Playfair Display + IBM Plex Sans) under `/fonts` — no Google Fonts runtime
+
+### Changed
+
+- **package.json** `homepage` → `https://reader.liu.nz`
+- **PWA / web manifest** description clarifies offline-first RSS
+- **README** trimmed; desktop/Pake docs moved to [docs/desktop.md](./docs/desktop.md)
+
 ## [0.0.6] - 2025-02-05
 
 ### Added

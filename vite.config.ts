@@ -10,7 +10,7 @@ export default defineConfig({
 			manifest: {
 				name: 'Vesper',
 				short_name: 'Vesper',
-				description: 'Where the day settles.',
+				description: 'Offline-first RSS reader. Where the day settles.',
 				start_url: '/',
 				display: 'standalone',
 				background_color: '#0f1419',

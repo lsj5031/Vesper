@@ -45,3 +45,23 @@ export const SEARCH_CONFIG = {
     /** Minimum word length to include in search tokens */
     MIN_WORD_LENGTH: 2,
 } as const;
+
+/** One-click starter feeds for empty-state onboarding (reliable public feeds). */
+export const STARTER_FEEDS = [
+    {
+        label: 'Hacker News',
+        url: 'https://hnrss.org/frontpage',
+    },
+    {
+        label: 'Simon Willison',
+        url: 'https://simonwillison.net/atom/everything/',
+    },
+    {
+        label: 'CSS-Tricks',
+        url: 'https://css-tricks.com/feed/',
+    },
+    {
+        label: 'Daring Fireball',
+        url: 'https://daringfireball.net/feeds/main',
+    },
+] as const;
